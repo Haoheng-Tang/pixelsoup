@@ -1,14 +1,19 @@
 :root {
   color-scheme: dark;
   --bg: #1e1e20;
+  --canvas-bg: #1b1b1d;
   --panel: #2a2a2d;
   --panel-raised: #333337;
   --border: #3d3d42;
+  --backdrop: rgb(0 0 0 / 45%);
+  --drop-backdrop: rgb(0 0 0 / 35%);
   --text: #e2e2e6;
   --text-muted: #9a9aa2;
   --accent: #5b8def;
   --on-accent: #fff;
+  --danger: #b3403a;
   --invalid: #d9534f;
+  --alert-text: #e8827f;
   --swatch-edge: rgb(0 0 0 / 70%);
   --swatch-inner-edge: rgb(255 255 255 / 55%);
   --marker: #fff;
@@ -16,33 +21,35 @@
   --default-foreground: #000;
   --default-background: #fff;
   --shadow-popover: 0 6px 20px rgb(0 0 0 / 45%);
+  --shadow-dialog: 0 12px 40px rgb(0 0 0 / 55%);
   --cursor-line: #fff;
   --cursor-halo: rgb(0 0 0 / 55%);
   --crop-shade: rgb(0 0 0 / 50%);
   --crop-grid: rgb(255 255 255 / 75%);
   --crop-grid-halo: rgb(0 0 0 / 25%);
 
-  /* Spacing, radii and type for new UI; older rules still use literal values. */
   --space-1: 2px;
   --space-2: 4px;
   --space-3: 6px;
   --space-4: 8px;
   --space-5: 12px;
   --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 6px;
+  --radius-lg: 8px;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-size-2xs: 8px;
   --font-size-xs: 10px;
   --font-size-sm: 11px;
   --font-size-md: 12px;
   --font-size-base: 13px;
+  --font-size-lg: 15px;
+  --font-weight-semibold: 600;
 
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: var(--font-size-base);
   color: var(--text);
   background: var(--bg);
@@ -65,7 +72,7 @@ button {
   color: var(--text);
   background: var(--panel-raised);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 3px 9px;
   cursor: pointer;
 }
@@ -89,21 +96,21 @@ select:focus-visible {
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 button.primary:hover:not(:disabled) {
-  border-color: #fff;
+  border-color: var(--on-accent);
 }
 
 button.danger {
-  background: #b3403a;
-  border-color: #b3403a;
-  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-accent);
 }
 
 button.danger:hover:not(:disabled) {
-  border-color: #fff;
+  border-color: var(--on-accent);
 }
 
 .app {
@@ -117,22 +124,22 @@ button.danger:hover:not(:disabled) {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 6px 12px;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-5);
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
 
 .app-title {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
 }
 
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .zoom-indicator {
@@ -155,9 +162,9 @@ button.danger:hover:not(:disabled) {
 
 .tool-key {
   position: absolute;
-  right: 2px;
+  right: var(--space-1);
   bottom: 0;
-  font-size: 8px;
+  font-size: var(--font-size-2xs);
   line-height: 1.2;
   color: var(--text-muted);
 }
@@ -166,11 +173,11 @@ button.danger:hover:not(:disabled) {
 .segmented button[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .tool-button[aria-pressed='true'] .tool-key {
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* Marks a button standing for a group of tools; a click on it opens the group's flyout. */
@@ -186,8 +193,8 @@ button.danger:hover:not(:disabled) {
 .tool-group-mark::after {
   content: '';
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: var(--space-1);
+  right: var(--space-1);
   width: 5px;
   height: 5px;
   background: currentColor;
@@ -195,7 +202,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .tool-button[aria-pressed='true'] .tool-group-mark {
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .segmented {
@@ -217,19 +224,19 @@ button.danger:hover:not(:disabled) {
 }
 
 .segmented button:first-child {
-  border-radius: 4px 0 0 4px;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
 
 .segmented button:last-child {
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .tool-options {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-6);
   min-height: 34px;
-  padding: 3px 12px;
+  padding: 3px var(--space-5);
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   user-select: none;
@@ -247,22 +254,22 @@ button.danger:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-md);
 }
 
 .status-bar {
   display: flex;
-  gap: 24px;
-  padding: 3px 12px;
+  gap: var(--space-8);
+  padding: 3px var(--space-5);
   background: var(--panel);
   border-top: 1px solid var(--border);
-  font-size: 12px;
+  font-size: var(--font-size-md);
   user-select: none;
 }
 
 .status-item {
   display: flex;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .status-label {
@@ -322,9 +329,9 @@ button.danger:hover:not(:disabled) {
 
 .panel-title {
   margin: 0;
-  padding: 8px 12px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -355,8 +362,8 @@ button.danger:hover:not(:disabled) {
 .layer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px 8px 10px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-4) 10px;
   border-bottom: 1px solid var(--border);
   border-left: 2px solid transparent;
   user-select: none;
@@ -416,7 +423,7 @@ button.danger:hover:not(:disabled) {
 
 .layer-body {
   display: grid;
-  gap: 4px;
+  gap: var(--space-2);
   flex: 1;
   min-width: 0;
 }
@@ -426,7 +433,7 @@ button.danger:hover:not(:disabled) {
   width: 100%;
   min-width: 0;
   height: 26px;
-  padding: 0 4px;
+  padding: 0 var(--space-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -444,25 +451,25 @@ button.danger:hover:not(:disabled) {
   width: 100%;
   min-width: 0;
   height: 26px;
-  padding: 0 4px;
+  padding: 0 var(--space-2);
   font: inherit;
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--accent);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 .layer-name-input[aria-invalid='true'] {
-  border-color: #d9534f;
+  border-color: var(--invalid);
 }
 
 .layer-opacity {
   display: grid;
   grid-template-columns: auto 1fr 38px;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-md);
 }
 
 .layer-opacity input {
@@ -480,8 +487,8 @@ button.danger:hover:not(:disabled) {
 .layer-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--border);
 }
 
@@ -507,15 +514,15 @@ button.danger:hover:not(:disabled) {
   display: grid;
   place-items: center;
   pointer-events: none;
-  background: rgb(0 0 0 / 35%);
+  background: var(--drop-backdrop);
   outline: 3px dashed var(--accent);
   outline-offset: -12px;
 }
 
 .drop-hint-label {
   padding: var(--space-5) var(--space-6);
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   background: var(--panel);
   border: 1px solid var(--accent);
   border-radius: var(--radius-md);
@@ -534,22 +541,22 @@ button.danger:hover:not(:disabled) {
 
 .menu-list {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + var(--space-2));
   left: 0;
   z-index: 10;
   display: grid;
   min-width: 250px;
-  padding: 4px;
+  padding: var(--space-2);
   background: var(--panel-raised);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 45%);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
 }
 
 .menu-item {
   display: flex;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--space-8);
   width: 100%;
   padding: 5px 10px;
   text-align: left;
@@ -561,7 +568,7 @@ button.danger:hover:not(:disabled) {
 .menu-item:focus-visible {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   outline: none;
 }
 
@@ -590,13 +597,13 @@ button.danger:hover:not(:disabled) {
   display: inline-block;
   width: 16px;
   height: 16px;
-  margin-right: 8px;
+  margin-right: var(--space-4);
   vertical-align: -3px;
 }
 
 .menu-separator {
   height: 1px;
-  margin: 4px 6px;
+  margin: var(--space-2) var(--space-3);
   background: var(--border);
 }
 
@@ -615,7 +622,7 @@ button.danger:hover:not(:disabled) {
 .menu-item[aria-expanded='true']:not([aria-disabled='true']) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .menu-submark {
@@ -634,7 +641,7 @@ button.danger:hover:not(:disabled) {
 .document-name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
   margin-left: auto;
   color: var(--text-muted);
@@ -648,33 +655,33 @@ button.danger:hover:not(:disabled) {
 
 .dirty-marker {
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 /* Dialogs */
 
 .dialog {
   width: min(380px, calc(100vw - 32px));
-  padding: 16px 20px;
+  padding: var(--space-6) var(--space-7);
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 12px 40px rgb(0 0 0 / 55%);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dialog);
 }
 
 .dialog::backdrop {
-  background: rgb(0 0 0 / 45%);
+  background: var(--backdrop);
 }
 
 .dialog-title {
   margin: 0 0 14px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 
 .dialog-text {
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-6);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -691,25 +698,25 @@ button.danger:hover:not(:disabled) {
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .dialog-actions button {
   min-width: 76px;
-  padding: 5px 12px;
+  padding: 5px var(--space-5);
 }
 
 .size-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-5);
 }
 
 /* Width, a swap button, then height. */
 .size-fields.swappable {
   grid-template-columns: 1fr auto 1fr;
   align-items: end;
-  column-gap: 8px;
+  column-gap: var(--space-4);
 }
 
 /* As tall as the inputs beside it (one line plus their padding and border), between them. */
@@ -727,8 +734,8 @@ button.danger:hover:not(:disabled) {
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 6px;
-  row-gap: 4px;
+  column-gap: var(--space-3);
+  row-gap: var(--space-2);
 }
 
 .field > label {
@@ -743,12 +750,12 @@ button.danger:hover:not(:disabled) {
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
 }
 
 .field input[aria-invalid='true'] {
-  border-color: #d9534f;
+  border-color: var(--invalid);
 }
 
 .unit {
@@ -758,7 +765,7 @@ button.danger:hover:not(:disabled) {
 .choice-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: var(--space-3) var(--space-6);
   margin: 0;
   padding: 0;
   border: 0;
@@ -766,7 +773,7 @@ button.danger:hover:not(:disabled) {
 
 .choice-group legend {
   width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-3);
   padding: 0;
   color: var(--text-muted);
 }
@@ -774,7 +781,7 @@ button.danger:hover:not(:disabled) {
 .choice-group label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .choice-group input {
@@ -786,7 +793,7 @@ button.danger:hover:not(:disabled) {
   display: grid;
   grid-template-columns: auto 1fr 42px;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
 }
 
 .range-field label {
@@ -807,19 +814,19 @@ button.danger:hover:not(:disabled) {
 .field-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-md);
   line-height: 1.4;
 }
 
 .field-hint[role='alert'] {
-  color: #e8827f;
+  color: var(--alert-text);
 }
 
 .check-field {
   display: flex;
   align-items: center;
   justify-self: start;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .check-field input {
@@ -834,7 +841,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .anchor-field legend {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-3);
   padding: 0;
   color: var(--text-muted);
 }
@@ -883,7 +890,7 @@ button.danger:hover:not(:disabled) {
 .fill-custom {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .fill-color {
@@ -1108,12 +1115,12 @@ button.danger:hover:not(:disabled) {
 .transform-fields {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-6);
 }
 
 @media (width < 1400px) {
   .transform-fields {
-    gap: 8px;
+    gap: var(--space-4);
   }
 
   .options-label-optional {
