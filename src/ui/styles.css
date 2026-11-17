@@ -1426,3 +1426,27 @@ button.danger:hover:not(:disabled) {
   position: static;
   margin-top: var(--space-3);
 }
+
+.mobile-sheet-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobile-sheet-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-5);
+  font-size: var(--font-size-base);
+  text-align: left;
+  border-radius: var(--radius-md);
+}
+
+.mobile-sheet-check,
+.mobile-sheet-chevron {
+  color: var(--text-muted);
+  font-weight: var(--font-weight-semibold);
+}

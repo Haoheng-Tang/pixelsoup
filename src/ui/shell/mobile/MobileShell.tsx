@@ -9,6 +9,7 @@ import { Viewport } from '../../viewport/Viewport';
 import type { ShellProps } from '../desktop/DesktopShell';
 import { MobileBottomBar } from './MobileBottomBar';
 import { MobileContextStrip } from './MobileContextStrip';
+import { MobileMenuSheets } from './MobileMenuSheets';
 import { dismissMobileSheet, toggleMobileSheet } from './mobile-sheet-state';
 import { MobileSheet } from './MobileSheet';
 import { MobileToolStrip } from './MobileToolStrip';
@@ -26,12 +27,14 @@ export interface MobileShellProps extends ShellProps {
 export function MobileShell({
   editor,
   controller,
+  clipboard,
   tools,
   freeTransform,
   colors,
   view,
   viewport,
   onViewportReady,
+  viewArea,
   renderSheet,
 }: MobileShellProps) {
   useRevision(controller);
@@ -77,6 +80,18 @@ export function MobileShell({
             </div>
           </MobileSheet>
         )}
+        <MobileMenuSheets
+          activeSheet={activeSheet}
+          setSheet={setActiveSheet}
+          onDismiss={dismiss}
+          editor={editor}
+          controller={controller}
+          clipboard={clipboard}
+          freeTransform={freeTransform}
+          view={view}
+          viewport={viewport}
+          viewArea={viewArea}
+        />
         {renderSheet?.(activeSheet, setActiveSheet, dismiss)}
       </main>
       <StatusBar viewport={viewport} tools={tools} />
