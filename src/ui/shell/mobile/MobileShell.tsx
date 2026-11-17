@@ -9,6 +9,7 @@ import { Viewport } from '../../viewport/Viewport';
 import type { ShellProps } from '../desktop/DesktopShell';
 import { MobileBottomBar } from './MobileBottomBar';
 import { MobileContextStrip } from './MobileContextStrip';
+import { MobileLayersSheet } from './MobileLayersSheet';
 import { MobileMenuSheets } from './MobileMenuSheets';
 import { dismissMobileSheet, toggleMobileSheet } from './mobile-sheet-state';
 import { MobileSheet } from './MobileSheet';
@@ -91,6 +92,13 @@ export function MobileShell({
           view={view}
           viewport={viewport}
           viewArea={viewArea}
+        />
+        <MobileLayersSheet
+          activeSheet={activeSheet}
+          setSheet={setActiveSheet}
+          onDismiss={dismiss}
+          editor={editor}
+          blocked={controller.blocked}
         />
         {renderSheet?.(activeSheet, setActiveSheet, dismiss)}
       </main>

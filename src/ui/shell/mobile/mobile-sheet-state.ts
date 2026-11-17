@@ -1,5 +1,7 @@
 import type { MobileSheetId } from './MobileTopBar';
 
+export type { MobileSheetId };
+
 /**
  * Toggles a mobile sheet from a top/bottom bar button. Re-tapping the button that opened
  * the active sheet (including sub-sheets `'onelayer'` under `'layers'` and `'edit-transform'`

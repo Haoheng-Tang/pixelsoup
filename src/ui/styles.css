@@ -1187,9 +1187,14 @@ button.danger:hover:not(:disabled) {
 
 /* Mobile shell */
 
+.app:has(> .mobile-shell) {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .mobile-shell {
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
 }
@@ -1239,6 +1244,7 @@ button.danger:hover:not(:disabled) {
 .mobile-dock {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   background: var(--panel);
   border-top: 1px solid var(--border);
 }
@@ -1449,4 +1455,104 @@ button.danger:hover:not(:disabled) {
 .mobile-sheet-chevron {
   color: var(--text-muted);
   font-weight: var(--font-weight-semibold);
+}
+
+.mobile-layer-list {
+  max-height: 45vh;
+  margin-bottom: var(--space-4);
+}
+
+.mobile-layer-row {
+  touch-action: pan-y;
+}
+
+.mobile-layer-tuning-button {
+  padding: 0;
+  border-color: var(--border);
+}
+
+.mobile-layer-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.mobile-layer-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-md);
+}
+
+.mobile-layer-row-opacity {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-layers-footer {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.mobile-layers-action {
+  flex: 1;
+  min-height: 40px;
+  font-size: var(--font-size-md);
+  border-radius: var(--radius-md);
+}
+
+.mobile-onelayer-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.mobile-onelayer-name-row {
+  display: flex;
+}
+
+.mobile-onelayer-name-button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  text-align: left;
+  border-radius: var(--radius-md);
+}
+
+.mobile-onelayer-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-3) 0;
+}
+
+.mobile-onelayer-visibility {
+  width: 40px;
+  height: 40px;
+}
+
+.mobile-onelayer-opacity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.mobile-onelayer-opacity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-md);
+  color: var(--text-muted);
+}
+
+.mobile-onelayer-opacity input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
 }
