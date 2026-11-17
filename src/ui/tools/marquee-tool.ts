@@ -88,7 +88,7 @@ export class MarqueeTool implements Tool {
 
   constructor(
     readonly shape: MarqueeShape,
-    private readonly options: SelectionOptions,
+    readonly options: SelectionOptions,
     readonly OptionsPanel?: ComponentType,
   ) {
     this.id = shape === 'rect' ? 'rect-marquee' : 'ellipse-marquee';

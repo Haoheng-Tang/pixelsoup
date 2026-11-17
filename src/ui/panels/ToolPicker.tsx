@@ -7,7 +7,7 @@ import { ContextMenu } from './ContextMenu';
 import { toolButtonView, toolFlyoutSections, toolGroupLabel } from './tool-groups';
 
 /** How long a press on a grouped tool's button is held to open its flyout, in ms. */
-const LONG_PRESS_MS = 400;
+export const LONG_PRESS_MS = 400;
 
 const ICON_PROPS = {
   width: 16,
@@ -79,7 +79,7 @@ const ICONS: Readonly<Record<string, ReactNode>> = {
   ),
 };
 
-function iconFor(tool: Tool): ReactNode {
+export function iconFor(tool: Tool): ReactNode {
   return ICONS[tool.id] ?? tool.name.charAt(0);
 }
 
@@ -198,7 +198,7 @@ function ToolButton({ tools, group }: { tools: ToolManager; group: ToolGroup }) 
 }
 
 /** Calls `onLongPress` once a press has been held for `LONG_PRESS_MS`, unless cancelled. */
-function useLongPress(onLongPress: () => void): { start: () => void; cancel: () => void } {
+export function useLongPress(onLongPress: () => void): { start: () => void; cancel: () => void } {
   const timer = useRef<number | undefined>(undefined);
   const callback = useRef(onLongPress);
   useEffect(() => {

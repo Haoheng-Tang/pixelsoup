@@ -99,7 +99,7 @@ export class CropTool implements Tool {
   private readonly listeners = new Set<() => void>();
 
   constructor(
-    private readonly options: CropOptions,
+    readonly options: CropOptions,
     readonly OptionsPanel?: ComponentType,
   ) {
     this.settings = options.settings;

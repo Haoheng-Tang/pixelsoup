@@ -155,7 +155,7 @@ abstract class LassoToolBase implements Tool {
   private preview: LassoOverlay | null = null;
 
   constructor(
-    private readonly options: SelectionOptions,
+    readonly options: SelectionOptions,
     readonly OptionsPanel?: ComponentType,
   ) {}
 

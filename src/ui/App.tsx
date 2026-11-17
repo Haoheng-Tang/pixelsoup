@@ -6,6 +6,8 @@ import type { Colors } from './color/colors';
 import { ModalHost } from './dialogs/ModalHost';
 import type { AppController } from './session/app-controller';
 import { DesktopShell } from './shell/desktop/DesktopShell';
+import { MobileShell } from './shell/mobile/MobileShell';
+import { useShellMode } from './shell/use-shell-mode';
 import type { ToolManager } from './tools/tool-manager';
 import type { FreeTransform } from './transform/free-transform';
 import { useBrushShortcuts } from './use-brush-shortcuts';
@@ -38,6 +40,7 @@ export function App(props: AppProps) {
   const { editor, controller, clipboard, tools, freeTransform, colors, view } = props;
   const [viewport, setViewport] = useState<ViewportController | null>(null);
   const viewArea = useCallback((): Rect | null => viewport?.visibleArea() ?? null, [viewport]);
+  const shellMode = useShellMode();
   useRevision(controller);
   useHistoryShortcuts(editor, controller);
   useEditShortcuts(editor, colors, controller);
@@ -52,10 +55,11 @@ export function App(props: AppProps) {
   useFileShortcuts(controller);
   const dropping = useFileDrop(controller);
   useDocumentWindow(controller.session);
+  const Shell = shellMode === 'mobile' ? MobileShell : DesktopShell;
 
   return (
     <div className={controller.busy ? 'app busy' : 'app'} aria-busy={controller.busy}>
-      <DesktopShell
+      <Shell
         editor={editor}
         controller={controller}
         clipboard={clipboard}
