@@ -1,289 +1,298 @@
 # Mobile Shell Plan (`feat/mobile-shell`)
 
-This document captures the implementation plan for Pixelsoup's mobile shell based on
-`docs/design/mobile.md`, the five wireframes in `docs/design/mobile/` (`canvas.jpg`,
-`canvas2.jpg`, `file.jpg`, `layers.jpg`, `onelayer.jpg`), and the existing desktop UI in
-`src/ui/`.
+This document captures the finalized implementation plan for Pixelsoup's mobile shell based on
+`docs/design/mobile.md` (including its `### Decisions` section), the five wireframes in
+`docs/design/mobile/` (`canvas.jpg`, `canvas2.jpg`, `file.jpg`, `layers.jpg`, `onelayer.jpg`),
+and the existing desktop UI in `src/ui/`.
 
 ---
 
 ## 1. Interface Breakdown
 
-Every control in the wireframes is mapped below to its callout number (or `—` when unnumbered
-in the drawing), its stable control ID (used for `data-testid` attributes and test names), the
-existing desktop component/icon/label it reuses, and its behaviour.
+Every control in the wireframes and resolved decisions is mapped below to its callout number
+(or `—` when unnumbered in the drawing), its stable control ID (used for `data-testid`
+attributes and test names), the existing desktop component/icon/label it reuses, and its
+behaviour.
 
-### 1.1 `canvas` (`docs/design/mobile/canvas.jpg`)
+### 1.1 `canvas` & `canvas2` (`docs/design/mobile/canvas.jpg`, `canvas2.jpg`)
 
 **What is on screen:**
 A full-viewport vertical layout with three regions:
 
 1. **Top menu bar** (`canvas.topBar`): 5 equal-width icon buttons spanning the full width
    (`① File`, `② Edit`, `③ Select`, `④ Image`, `⑤ Layer`).
-2. **Center workspace** (`canvas.viewport`): the imperative `Viewport` (`ViewportController`)
-   filling all remaining height between the top and bottom bars.
+2. **Center workspace** (`canvas.workspace` / `canvas.viewport`): the imperative `Viewport`
+   (`ViewportController`) filling all remaining height between the top and bottom bars, and
+   hosting centered modal sheets with a translucent backdrop when a sheet is open.
 3. **Bottom dock** (`canvas.bottomDock`):
-   - **Horizontal tool strip** (`canvas.toolStrip`) showing 5 tool-group buttons at a time,
-     scrolled to the left so callouts `⑥`–`⑩` are visible (`Rectangular Marquee`, `Lasso`,
-     `Magic Wand`, `Move`, `Brush`). Grouped buttons (`⑥`, `⑦`) keep the top-right corner
-     triangle (`.tool-group-mark`).
+   - **Compact contextual strip** (`canvas.contextStrip`) directly above the tool strip,
+     showing the active tool's primary 1–2 controls plus a `"More"` button
+     (`canvas.moreOptionsButton`) that opens the full `ToolOptionsBar` and `ColorSwatches` /
+     `ColorPicker` in a sheet (`options.sheet`):
+     - **Brush / Eraser**: size slider and foreground colour swatch.
+     - **Selection tools (Marquee / Lasso)**: selection mode buttons (`New`, `Add`, `Subtract`,
+       `Intersect`).
+     - **Magic Wand / Paint Bucket**: tolerance slider (plus foreground swatch for Bucket).
+     - **Eyedropper**: sample source selector and foreground/background swatches.
+     - **Crop**: ratio selector plus `✓` (`canvas.applyButton`) and `✗` (`canvas.cancelButton`).
+     - **Free Transform (session)**: angle field plus `✓` (`canvas.applyButton`) and `✗`
+       (`canvas.cancelButton`).
+   - **Horizontal tool strip** (`canvas.toolStrip`): a single scroll-snap container showing 5
+     of the 9 tool-group buttons at a time. `canvas` is the left scroll position (`⑥`–`⑩`
+     visible: `Marquee`, `Lasso`, `Magic Wand`, `Move`, `Brush`), and `canvas2` is the right
+     scroll position (`⑩`–`⑭` visible: `Brush`, `Eraser`, `Paint Bucket`, `Eyedropper`,
+     `Crop`). All 9 tool buttons use the `canvas.` prefix so IDs never depend on scroll
+     position. Grouped buttons (`⑥`, `⑦`) keep `.tool-group-mark`.
    - **Horizontal scrollbar / track** (`canvas.toolScrollbar`) directly beneath the tool
-     buttons, with its thumb at the left position.
+     buttons, synced with `canvas.toolStrip`.
    - **Bottom action bar** (`canvas.bottomBar`): 3 equal-width buttons spanning the full width
      (`⑮ Undo`, `⑯ Redo`, `⑰ Menu`).
 
-| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                                                                                                                          | What It Does                                                                                                                                                                                |
-| ------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ①       | `canvas.fileButton`        | Label `"File"` (`FileMenu.tsx`); new 16×16 stroked SVG document icon matching `ActionIcon` / `ICONS` style (replaces 📄 placeholder)                                             | Opens the `file` sheet (`file.jpg`)                                                                                                                                                         |
-| ②       | `canvas.editButton`        | Label `"Edit"` (`EditMenu.tsx`); new 16×16 stroked SVG pencil icon (replaces 🖊 placeholder)                                                                                      | Opens the Edit menu sheet (`EditMenu` actions: Undo, Redo, Cut, Copy, Copy Merged, Paste, Fill…, Clear, Free Transform, Transform modes/flips/turns)                                        |
-| ③       | `canvas.selectButton`      | Label `"Select"` (`SelectMenu.tsx`); new 16×16 stroked SVG dashed-box-with-arrow icon matching `ICONS['rect-marquee']`                                                           | Opens the Select menu sheet (`SelectMenu` actions: Select All, Deselect, Inverse)                                                                                                           |
-| ④       | `canvas.imageButton`       | Label `"Image"` (`ImageMenu.tsx`); new 16×16 stroked SVG picture-frame icon (replaces 🖼️ placeholder)                                                                            | Opens the Image menu sheet (`ImageMenu` actions: Crop to Selection, Image Size…, Canvas Size…, canvas rotations and flips)                                                                  |
-| ⑤       | `canvas.layersButton`      | Label `"Layers"` (`LayerPanel.tsx`) / `"Layer"` (`LayerMenu.tsx`); new 16×16 stroked SVG stacked-layers icon                                                                     | Opens the `layers` sheet (`layers.jpg`)                                                                                                                                                     |
-| —       | `canvas.viewport`          | `Viewport` (`Viewport.tsx`) + `ViewportController` (`viewport-controller.ts`)                                                                                                    | Renders the document composite, checkerboard, marching ants and tool overlays; routes 1-finger gestures to the active tool, 2-finger pinch/drag to zoom/pan, and long-press to `CanvasMenu` |
-| —       | `canvas.toolStrip`         | `ToolPicker` (`ToolPicker.tsx`) + ` ToolManager.groups` (`tool-groups.ts`)                                                                                                       | Horizontally scrollable strip of the 9 tool-group buttons (5 visible per viewport width)                                                                                                    |
-| ⑥       | `canvas.marqueeTool`       | `ToolButton` for group `M` (`ToolPicker.tsx`), `ICONS['rect-marquee']` / `ICONS['ellipse-marquee']`, `.tool-group-mark`, labels `"Rectangular Marquee"` / `"Elliptical Marquee"` | Tap activates the last-used marquee tool (`ToolManager.lastUsed`); long-press (`LONG_PRESS_MS = 400`) or tapping `.tool-group-mark` opens the group flyout (`ContextMenu`)                  |
-| ⑦       | `canvas.lassoTool`         | `ToolButton` for group `L` (`ToolPicker.tsx`), `ICONS['lasso']` / `ICONS['polygon-lasso']`, `.tool-group-mark`, labels `"Lasso"` / `"Polygonal Lasso"`                           | Tap activates the last-used lasso tool; long-press or tapping `.tool-group-mark` opens the group flyout                                                                                     |
-| ⑧       | `canvas.magicWandTool`     | `ToolButton` for group `W` (`ToolPicker.tsx`), `ICONS['magic-wand']`, label `"Magic Wand"`                                                                                       | Tap activates `MagicWandTool`                                                                                                                                                               |
-| ⑨       | `canvas.moveTool`          | `ToolButton` for group `V` (`ToolPicker.tsx`), `ICONS['move']`, label `"Move"`                                                                                                   | Tap activates `MoveTool`                                                                                                                                                                    |
-| ⑩       | `canvas.brushTool`         | `ToolButton` for group `B` (`ToolPicker.tsx`), `ICONS['brush']`, label `"Brush"`                                                                                                 | Tap activates `PaintTool('paint')`                                                                                                                                                          |
-| —       | `canvas.toolScrollbar`     | Native/synced horizontal scroll indicator for `canvas.toolStrip`                                                                                                                 | Indicates and scrolls between the left (`canvas`, ⑥–⑩) and right (`canvas2`, ⑩–⑭) tool strip positions                                                                                      |
-| ⑮       | `canvas.undoButton`        | `editor.history.undo()`, `canUndo`, `undoLabel` (`Toolbar.tsx`); new 16×16 stroked SVG curved-left arrow icon                                                                    | Undoes the last history step (or cancels a running Free Transform session); disabled when `blocked \|\| !history.canUndo`                                                                   |
-| ⑯       | `canvas.redoButton`        | `editor.history.redo()`, `canRedo`, `redoLabel` (`Toolbar.tsx`); new 16×16 stroked SVG curved-right arrow icon                                                                   | Redoes the next history step; disabled when `blocked \|\| !history.canRedo`                                                                                                                 |
-| ⑰       | `canvas.menuButton`        | Label `"Menu"`; new 16×16 stroked SVG three-bar icon (replaces `☰` placeholder)                                                                                                 | Opens the overflow/options menu (see Section 3, Question 2)                                                                                                                                 |
+| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                                                                                                                          | What It Does                                                                                                                                                             |
+| ------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ①       | `canvas.fileButton`        | Label `"File"` (`FileMenu.tsx`); new 16×16 stroked SVG document icon matching `ActionIcon` / `ICONS` style (replaces 📄 placeholder)                                             | Opens/dismisses the `file` sheet (`file.jpg`)                                                                                                                            |
+| ②       | `canvas.editButton`        | Label `"Edit"` (`EditMenu.tsx`); new 16×16 stroked SVG pencil icon (replaces 🖊 placeholder)                                                                                      | Opens/dismisses the `edit` sheet (`EditMenu` actions, with `Transform` drilling into a sub-list with a back button)                                                      |
+| ③       | `canvas.selectButton`      | Label `"Select"` (`SelectMenu.tsx`); new 16×16 stroked SVG dashed-box-with-arrow icon matching `ICONS['rect-marquee']`                                                           | Opens/dismisses the `select` sheet (`SelectMenu` actions: Select All, Deselect, Inverse)                                                                                 |
+| ④       | `canvas.imageButton`       | Label `"Image"` (`ImageMenu.tsx`); new 16×16 stroked SVG picture-frame icon (replaces 🖼️ placeholder)                                                                            | Opens/dismisses the `image` sheet (`ImageMenu` actions: Crop to Selection, Image Size…, Canvas Size…, canvas rotations and flips)                                        |
+| ⑤       | `canvas.layersButton`      | Label `"Layer"` (`LayerMenu.tsx`); new 16×16 stroked SVG stacked-layers icon                                                                                                     | Opens/dismisses the `layers` sheet (`layers.jpg`)                                                                                                                        |
+| —       | `canvas.viewport`          | `Viewport` (`Viewport.tsx`) + `ViewportController` (`viewport-controller.ts`)                                                                                                    | Renders composite, checkerboard, ants, and overlays; routes 1-finger gestures to active tool, 2-finger pinch/drag to zoom/pan, and tool-gated long-press to `CanvasMenu` |
+| —       | `canvas.contextStrip`      | Primary controls from `BrushOptionsPanel`, `SelectionModeBar`, `RegionOptionsPanel`, `CropOptionsPanel`, `TransformOptionsPanel`, `ColorSwatches`                                | Displays the active tool's primary 1–2 controls (size + swatch, selection mode, tolerance, or `✓`/`✗` + ratio/angle) directly above the tool strip                       |
+| —       | `canvas.moreOptionsButton` | Label `"More"`                                                                                                                                                                   | Opens `options.sheet` containing the full `ToolOptionsBar` and `ColorSwatches` / `ColorPicker`                                                                           |
+| —       | `canvas.toolStrip`         | `ToolPicker` (`ToolPicker.tsx`) + `ToolManager.groups` (`tool-groups.ts`)                                                                                                        | Single horizontal scroll-snap strip of the 9 tool-group buttons (5 visible per viewport width)                                                                           |
+| ⑥       | `canvas.marqueeTool`       | `ToolButton` for group `M` (`ToolPicker.tsx`), `ICONS['rect-marquee']` / `ICONS['ellipse-marquee']`, `.tool-group-mark`, labels `"Rectangular Marquee"` / `"Elliptical Marquee"` | Tap activates last-used marquee tool (`ToolManager.lastUsed`); long-press (`LONG_PRESS_MS = 400`) or tapping `.tool-group-mark` opens the group flyout (`ContextMenu`)   |
+| ⑦       | `canvas.lassoTool`         | `ToolButton` for group `L` (`ToolPicker.tsx`), `ICONS['lasso']` / `ICONS['polygon-lasso']`, `.tool-group-mark`, labels `"Lasso"` / `"Polygonal Lasso"`                           | Tap activates last-used lasso tool; long-press or tapping `.tool-group-mark` opens the group flyout                                                                      |
+| ⑧       | `canvas.magicWandTool`     | `ToolButton` for group `W` (`ToolPicker.tsx`), `ICONS['magic-wand']`, label `"Magic Wand"`                                                                                       | Tap activates `MagicWandTool`                                                                                                                                            |
+| ⑨       | `canvas.moveTool`          | `ToolButton` for group `V` (`ToolPicker.tsx`), `ICONS['move']`, label `"Move"`                                                                                                   | Tap activates `MoveTool`                                                                                                                                                 |
+| ⑩       | `canvas.brushTool`         | `ToolButton` for group `B` (`ToolPicker.tsx`), `ICONS['brush']`, label `"Brush"`                                                                                                 | Tap activates `PaintTool('paint')`                                                                                                                                       |
+| ⑪       | `canvas.eraserTool`        | `ToolButton` for group `E` (`ToolPicker.tsx`), `ICONS['eraser']`, label `"Eraser"`                                                                                               | Tap activates `PaintTool('erase')`                                                                                                                                       |
+| ⑫       | `canvas.paintBucketTool`   | `ToolButton` for group `G` (`ToolPicker.tsx`), `ICONS['paint-bucket']`, label `"Paint Bucket"`                                                                                   | Tap activates `PaintBucketTool`                                                                                                                                          |
+| ⑬       | `canvas.eyedropperTool`    | `ToolButton` for group `I` (`ToolPicker.tsx`), `ICONS['eyedropper']`, label `"Eyedropper"`                                                                                       | Tap activates `EyedropperTool`                                                                                                                                           |
+| ⑭       | `canvas.cropTool`          | `ToolButton` for group `C` (`ToolPicker.tsx`), `ICONS['crop']`, label `"Crop"`                                                                                                   | Tap activates `CropTool`                                                                                                                                                 |
+| —       | `canvas.toolScrollbar`     | Interactive horizontal scrollbar/track synced with `canvas.toolStrip`                                                                                                            | Scrolls and shows progress between the left (`canvas`, `⑥`–`⑩`) and right (`canvas2`, `⑩`–`⑭`) tool strip positions                                                      |
+| ⑮       | `canvas.undoButton`        | `editor.history.undo()`, `canUndo`, `undoLabel` (`Toolbar.tsx`); new 16×16 stroked SVG curved-left arrow icon                                                                    | Undoes the last history step (or cancels a running Free Transform session); disabled when `blocked \|\| !history.canUndo`                                                |
+| ⑯       | `canvas.redoButton`        | `editor.history.redo()`, `canRedo`, `redoLabel` (`Toolbar.tsx`); new 16×16 stroked SVG curved-right arrow icon                                                                   | Redoes the next history step; disabled when `blocked \|\| !history.canRedo`                                                                                              |
+| ⑰       | `canvas.menuButton`        | Label `"Menu"`; new 16×16 stroked SVG three-bar icon (replaces `☰` placeholder)                                                                                                 | Opens/dismisses `menu.sheet` with Zoom (`Fit to Screen`, `100%`), `Extras` toggle (`ViewOptions.showExtras`), and `Demo Document`                                        |
 
 ---
 
-### 1.2 `canvas2` (`docs/design/mobile/canvas2.jpg`)
+### 1.2 `file` (`docs/design/mobile/file.jpg`) and Top-Bar Menu Sheets (`edit`, `select`, `image`, `menu`)
 
 **What is on screen:**
-The same mobile shell view as `canvas`, with the horizontal tool strip (`canvas.toolStrip`)
-scrolled to the right end so that the 5 visible tool slots show callouts `⑩`–`⑭` (`Brush`,
-`Eraser`, `Paint Bucket`, `Eyedropper`, `Crop`) and the scrollbar thumb sits on the right side
-of the track. Because there are 9 tool groups in `createToolManager` (`M`, `L`, `W`, `V`, `B`,
-`E`, `G`, `I`, `C`) and 5 slots fit across the screen, `⑩ Brush` is the 5th tool from the left
-in `canvas` and the 1st of the 5 visible tools when scrolled all the way right in `canvas2`.
+Opened by tapping `①` (`canvas.fileButton`). Inside the center workspace area over a
+translucent backdrop, a centered vertical list of commands is displayed with horizontal
+dividers, using the exact desktop labels from `FileMenu.tsx` (including ellipses and
+`Demo Document`). Because file pickers require transient user activation (`FileStore`),
+tapping a file item calls `controller.run(command)` synchronously inside the click handler and
+dismisses the sheet.
 
-| Callout | Control ID (`data-testid`)                                    | Desktop Component / Icon / Label Reused                                                        | What It Does                       |
-| ------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------- |
-| ①–⑤     | `canvas.fileButton` … `canvas.layersButton`                   | Same top-bar buttons as `canvas`                                                               | Same as `canvas`                   |
-| ⑩       | `canvas.brushTool`                                            | `ToolButton` for group `B`, `ICONS['brush']`, label `"Brush"`                                  | Tap activates `PaintTool('paint')` |
-| ⑪       | `canvas2.eraserTool`                                          | `ToolButton` for group `E` (`ToolPicker.tsx`), `ICONS['eraser']`, label `"Eraser"`             | Tap activates `PaintTool('erase')` |
-| ⑫       | `canvas2.paintBucketTool`                                     | `ToolButton` for group `G` (`ToolPicker.tsx`), `ICONS['paint-bucket']`, label `"Paint Bucket"` | Tap activates `PaintBucketTool`    |
-| ⑬       | `canvas2.eyedropperTool`                                      | `ToolButton` for group `I` (`ToolPicker.tsx`), `ICONS['eyedropper']`, label `"Eyedropper"`     | Tap activates `EyedropperTool`     |
-| ⑭       | `canvas2.cropTool`                                            | `ToolButton` for group `C` (`ToolPicker.tsx`), `ICONS['crop']`, label `"Crop"`                 | Tap activates `CropTool`           |
-| ⑮–⑰     | `canvas.undoButton`, `canvas.redoButton`, `canvas.menuButton` | Same bottom-bar buttons as `canvas`                                                            | Same as `canvas`                   |
+`② Edit`, `③ Select`, `④ Image`, and `⑰ Menu` open the same centered sheet style inside the
+workspace, built from the shared section definitions in `EditMenu.tsx`, `SelectMenu.tsx`,
+`ImageMenu.tsx`, and `ViewMenu.tsx`. In `Edit`, tapping `Transform` drills into a sub-list
+(`edit.transformSublist`) with a `Back` button (`edit.backButton`) that returns to the main
+`Edit` list.
 
-_(Note: whether the tool buttons in `canvas2` use `canvas.*Tool` or `canvas2.*Tool` as their
-`data-testid` when rendered inside a single scrollable strip is listed in Section 3, Question 1.)_
+| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                    | What It Does                                                                                 |
+| ------- | -------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| —       | `file.sheet`               | `FileMenu` (`FileMenu.tsx`) sections                                       | Centered sheet for File commands; dismisses on tap-outside, swipe-down, re-tapping ①, or Esc |
+| —       | `file.newItem`             | `FileMenu` `'new'` (`"New…"`)                                              | Dismisses sheet and opens `NewDocumentDialog` (after discard confirmation if dirty)          |
+| —       | `file.openItem`            | `FileMenu` `'open'` (`"Open…"`)                                            | Dismisses sheet and starts `controller.run('open')` synchronously (file picker)              |
+| —       | `file.importItem`          | `FileMenu` `'import'` (`"Import Image as Layer…"`)                         | Dismisses sheet and starts `controller.run('import')` synchronously                          |
+| —       | `file.saveItem`            | `FileMenu` `'save'` (`"Save"`)                                             | Dismisses sheet and saves the `.soup` document                                               |
+| —       | `file.saveAsItem`          | `FileMenu` `'save-as'` (`"Save As…"`)                                      | Dismisses sheet and saves to a new `.soup` file                                              |
+| —       | `file.exportItem`          | `FileMenu` `'export'` (`"Export…"`)                                        | Dismisses sheet and opens `ExportDialog`                                                     |
+| —       | `file.closeItem`           | `FileMenu` `'close'` (`"Close"`)                                           | Dismisses sheet and closes the current document (prompting if unsaved)                       |
+| —       | `file.demoItem`            | `FileMenu` `'demo'` (`"Demo Document"`)                                    | Dismisses sheet and loads the demo document (prompting if unsaved)                           |
+| —       | `edit.sheet`               | `EditMenu` (`EditMenu.tsx`) sections                                       | Centered sheet for Edit commands; `Transform` drills into `edit.transformSublist`            |
+| —       | `edit.backButton`          | Label `"Back"`                                                             | Returns from the `Transform` sub-list to the main `Edit` sheet                               |
+| —       | `select.sheet`             | `SelectMenu` (`SelectMenu.tsx`) sections                                   | Centered sheet for `Select All`, `Deselect`, `Inverse`                                       |
+| —       | `image.sheet`              | `ImageMenu` (`ImageMenu.tsx`) sections                                     | Centered sheet for `Crop to Selection`, `Image Size…`, `Canvas Size…`, rotations, and flips  |
+| —       | `menu.sheet`               | `ViewMenu` (`ViewMenu.tsx`) + viewport zoom (`fitToViewport`, `zoomTo(1)`) | Centered sheet for `Fit to Screen`, `Actual Pixels (100%)`, `Extras`, and `Demo Document`    |
+| —       | `options.sheet`            | `ToolOptionsBar` (`ToolOptionsBar.tsx`) + `ColorSwatches` (`ColorPicker`)  | Sheet opened by `canvas.moreOptionsButton` showing full active tool options and colours      |
 
 ---
 
-### 1.3 `file` (`docs/design/mobile/file.jpg`)
+### 1.3 `layers` (`docs/design/mobile/layers.jpg`)
 
 **What is on screen:**
-Opened by tapping `①` (`canvas.fileButton`). Over the workspace area, a vertical list of file
-commands is displayed with horizontal dividers between items: `New`, `Open`, `Import image`,
-`Save`, `Save as`, `Export`, `Close`. Tapping outside the sheet dismisses it back to `canvas`.
-Because file pickers require transient user activation (`FileStore` in `src/ui/io/file-store.ts`),
-tapping an item calls `controller.run(command)` synchronously inside the click handler.
+Opened by tapping `⑤` (`canvas.layersButton`). Renders inside the workspace over a translucent
+backdrop, listing the document's layer stack in top-down order
+(`[...editor.document.layers].reverse()`, matching `LayerPanel.tsx`):
 
-| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                                       | What It Does                                                                           |
-| ------- | -------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| —       | `file.sheet`               | `FileMenu` (`FileMenu.tsx`) sections / `MenuList`                                             | Container sheet for the File commands; dismisses on tap-outside, swipe-down, or Escape |
-| —       | `file.newItem`             | `FileMenu` `'new'` (`New…` / `New`), `controller.run('new')`                                  | Dismisses sheet and opens `NewDocumentDialog` (after discard confirmation if dirty)    |
-| —       | `file.openItem`            | `FileMenu` `'open'` (`Open…` / `Open`), `controller.run('open')`                              | Dismisses sheet and starts `controller.run('open')` synchronously (file picker)        |
-| —       | `file.importItem`          | `FileMenu` `'import'` (`Import Image as Layer…` / `Import image`), `controller.run('import')` | Dismisses sheet and starts `controller.run('import')` synchronously                    |
-| —       | `file.saveItem`            | `FileMenu` `'save'` (`Save`), `controller.run('save')`                                        | Dismisses sheet and saves the `.soup` document                                         |
-| —       | `file.saveAsItem`          | `FileMenu` `'save-as'` (`Save As…` / `Save as`), `controller.run('save-as')`                  | Dismisses sheet and saves to a new `.soup` file                                        |
-| —       | `file.exportItem`          | `FileMenu` `'export'` (`Export…` / `Export`), `controller.run('export')`                      | Dismisses sheet and opens `ExportDialog`                                               |
-| —       | `file.closeItem`           | `FileMenu` `'close'` (`Close`), `controller.run('close')`                                     | Dismisses sheet and closes the current document (prompting if unsaved)                 |
+- Each row (`layers.row`) shows the eye visibility toggle (`layers.visibilityButton`), the
+  layer name, and the live thumbnail (`⑱`, `layers.layerTuning`).
+- Tapping a row selects that layer as active (`editor.setActiveLayer(layer.id)`) and highlights
+  it (`aria-current="true"`).
+- Tapping the thumbnail `⑱` (`layers.layerTuning`) selects the layer and opens `onelayer`
+  (`onelayer.jpg`).
+- Drag-to-reorder stays in `layers` (using long-press-to-lift on touch so a plain vertical drag
+  scrolls the layer list without fighting reorder).
+- A bottom action bar inside `layers.sheet` provides `New Layer` (`layers.newLayerButton`) and
+  `Flatten Image` (`layers.flattenButton`).
+
+| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                          | What It Does                                                                                                                    |
+| ------- | -------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| —       | `layers.sheet`             | `LayerPanel` (`LayerPanel.tsx`)                                                  | Modal sheet listing layers from top of stack to bottom; dismisses on tap-outside, swipe-down, re-tapping ⑤, or Escape           |
+| —       | `layers.row`               | `LayerRow` (`LayerPanel.tsx`), `data-layer-id={layer.id}`                        | Tapping selects the active layer (`aria-current="true"`); long-press + vertical drag reorders the stack (`ReorderLayerCommand`) |
+| —       | `layers.visibilityButton`  | `.visibility-toggle` + `EyeIcon` (`LayerPanel.tsx`), `SetLayerVisibilityCommand` | Toggles `layer.visible` (committing a floating selection first if on its source); disabled on a floating selection row          |
+| ⑱       | `layers.layerTuning`       | `.layer-thumbnail` + `LayerThumbnails` (`layer-thumbnails.ts`)                   | Selects the layer (`editor.setActiveLayer(layer.id)`) and transitions to `onelayer` (`onelayer.jpg`)                            |
+| —       | `layers.newLayerButton`    | `ActionIcon('new')`, `runLayerAction(editor, 'new')`, label `"New layer"`        | Adds a new layer above the active layer and selects it                                                                          |
+| —       | `layers.flattenButton`     | `runLayerAction(editor, 'flatten')`, label `"Flatten Image"`                     | Flattens visible layers into one (disabled when `!canRunLayerAction(editor, 'flatten')`)                                        |
 
 ---
 
-### 1.4 `layers` (`docs/design/mobile/layers.jpg`)
+### 1.4 `onelayer` (`docs/design/mobile/onelayer.jpg`)
 
 **What is on screen:**
-Opened by tapping `⑤` (`canvas.layersButton`). Displays the document's layer stack in top-down
-order (`[...editor.document.layers].reverse()`, matching `LayerPanel.tsx`). Each row shows:
+Opened by tapping `⑱` (`layers.layerTuning`) on a layer in `layers`. Displays:
 
-- Left: an eye toggle button (`EyeIcon` from `LayerPanel.tsx`, open when visible, crossed-out
-  when hidden, as shown on the bottom row of `layers.jpg`).
-- Right: the layer's thumbnail box (`LayerThumbnails`, `.layer-thumbnail`), annotated with `⑱`
-  (`LayerTuning`). The top row in `layers.jpg` shows a partial grey fill representing 80%
-  opacity or active highlight.
+- Top: the layer's editable name (`onelayer.nameButton`, tapping opens `onelayer.nameInput` via
+  `RenameField` to rename the layer).
+- Center: the eye visibility toggle (`onelayer.visibilityButton`) and live thumbnail
+  (`onelayer.thumbnail`).
+- Below: `Opacity` label on the left, percentage readout (`onelayer.opacityValue`, e.g. `80%`)
+  on the right, and a full-width horizontal range slider (`onelayer.opacitySlider`, `0`–`100%`).
+- Bottom action row: `Duplicate Layer` (`onelayer.duplicateButton`), `Delete Layer`
+  (`onelayer.deleteButton`), `Merge Down` (`onelayer.mergeDownButton`), `Layer via Copy`
+  (`onelayer.layerViaCopyButton`), `Layer via Cut` (`onelayer.layerViaCutButton`), and `Commit
+Floating Selection` (`onelayer.commitFloatingButton`), enabled with `canRunLayerAction` as on
+  desktop.
+- Dismissing `onelayer` (tap-outside, swipe-down, or Escape) goes one level up back to
+  `layers`.
 
-| Callout | Control ID (`data-testid`) | Desktop Component / Icon / Label Reused                                          | What It Does                                                                                                           |
-| ------- | -------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| —       | `layers.sheet`             | `LayerPanel` (`LayerPanel.tsx`)                                                  | Modal sheet listing layers from top of stack to bottom; dismisses on tap-outside or swipe-down                         |
-| —       | `layers.row`               | `LayerRow` (`LayerPanel.tsx`), `data-layer-id={layer.id}`                        | Represents one layer in stack order; supports pointer drag-to-reorder (`layer-drag.ts`)                                |
-| —       | `layers.visibilityButton`  | `.visibility-toggle` + `EyeIcon` (`LayerPanel.tsx`), `SetLayerVisibilityCommand` | Toggles `layer.visible` (committing a floating selection first if on its source); disabled on a floating selection row |
-| ⑱       | `layers.layerTuning`       | `.layer-thumbnail` + `LayerThumbnails` (`layer-thumbnails.ts`)                   | Selects the layer (`editor.setActiveLayer(layer.id)`) and transitions to `onelayer` (`onelayer.jpg`) for that layer    |
-
----
-
-### 1.5 `onelayer` (`docs/design/mobile/onelayer.jpg`)
-
-**What is on screen:**
-Opened by tapping `⑱` (`layers.layerTuning`) on a layer in `layers`. Shows the selected
-layer's eye visibility toggle and thumbnail centered in the upper area, and below it an
-`Opacity` label on the left, the percentage readout (`80%`) on the right, and a full-width
-horizontal range slider (`0`–`100%`). Tapping outside dismisses `onelayer` and returns to
-`layers`.
-
-| Callout | Control ID (`data-testid`)  | Desktop Component / Icon / Label Reused                                                         | What It Does                                                                                                      |
-| ------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| —       | `onelayer.sheet`            | Single-layer detail view derived from `LayerRow` (`LayerPanel.tsx`)                             | Displays tuning controls for the target layer; dismisses back to `layers` on tap-outside or swipe-down            |
-| —       | `onelayer.visibilityButton` | `.visibility-toggle` + `EyeIcon` (`LayerPanel.tsx`), `SetLayerVisibilityCommand`                | Toggles `layer.visible` for this layer; disabled if floating                                                      |
-| —       | `onelayer.thumbnail`        | `.layer-thumbnail` + `LayerThumbnails` (`layer-thumbnails.ts`)                                  | Live-rendered thumbnail of the layer's bounds over a checkerboard                                                 |
-| —       | `onelayer.opacityValue`     | `<output>` in `.layer-opacity` (`LayerPanel.tsx`), `{percent}%`                                 | Displays `Math.round(layer.opacity * 100)%`                                                                       |
-| —       | `onelayer.opacitySlider`    | `<input type="range" min={0} max={100} step={1}>` + `SetLayerOpacityCommand` (`LayerPanel.tsx`) | Adjusts layer opacity with per-gesture `mergeKey` (`opacity:${layer.id}:${gesture}`) so one drag is one undo step |
+| Callout | Control ID (`data-testid`)      | Desktop Component / Icon / Label Reused                                                         | What It Does                                                                                                           |
+| ------- | ------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| —       | `onelayer.sheet`                | Single-layer detail view derived from `LayerPanel.tsx` & `LayerMenu.tsx`                        | Displays tuning controls and actions for the selected layer; dismisses one level up to `layers`                        |
+| —       | `onelayer.nameButton`           | `.layer-name` + `RenameField` (`LayerPanel.tsx`), `renameLayerCommand`                          | Tapping edits the layer's name (`onelayer.nameInput`); Enter/blur commits, Escape cancels; disabled for floating layer |
+| —       | `onelayer.visibilityButton`     | `.visibility-toggle` + `EyeIcon` (`LayerPanel.tsx`), `SetLayerVisibilityCommand`                | Toggles `layer.visible` for this layer; disabled if floating                                                           |
+| —       | `onelayer.thumbnail`            | `.layer-thumbnail` + `LayerThumbnails` (`layer-thumbnails.ts`)                                  | Live-rendered thumbnail of the layer's bounds over a checkerboard                                                      |
+| —       | `onelayer.opacityValue`         | `<output>` in `.layer-opacity` (`LayerPanel.tsx`), `{percent}%`                                 | Displays `Math.round(layer.opacity * 100)%`                                                                            |
+| —       | `onelayer.opacitySlider`        | `<input type="range" min={0} max={100} step={1}>` + `SetLayerOpacityCommand` (`LayerPanel.tsx`) | Adjusts layer opacity with per-gesture `mergeKey` (`opacity:${layer.id}:${gesture}`) so one drag is one undo step      |
+| —       | `onelayer.duplicateButton`      | `ActionIcon('duplicate')`, `runLayerAction(editor, 'duplicate')`, label `"Duplicate Layer"`     | Duplicates the layer directly above and makes the copy active                                                          |
+| —       | `onelayer.deleteButton`         | `ActionIcon('delete')`, `runLayerAction(editor, 'delete')`, label `"Delete Layer"`              | Deletes the layer (disabled when it is the only layer or while floating)                                               |
+| —       | `onelayer.mergeDownButton`      | `ActionIcon('merge-down')`, `runLayerAction(editor, 'merge-down')`, label `"Merge Down"`        | Merges the layer into the layer below                                                                                  |
+| —       | `onelayer.layerViaCopyButton`   | `runLayerAction(editor, 'layer-via-copy')`, label `"Layer via Copy"`                            | Copies selected pixels into a new layer above                                                                          |
+| —       | `onelayer.layerViaCutButton`    | `runLayerAction(editor, 'layer-via-cut')`, label `"Layer via Cut"`                              | Cuts selected pixels into a new layer above                                                                            |
+| —       | `onelayer.commitFloatingButton` | `runLayerAction(editor, 'commit-floating')`, label `"Commit Floating Selection"`                | Commits the floating selection into its source layer                                                                   |
 
 ---
 
 ## 2. Transition Map
 
-Transitions taken directly from `docs/design/mobile.md` are unmarked; transitions required by
-the architecture/scope but not explicitly drawn in `mobile.md`'s graph are tagged
-`[inferred]`.
-
 ```mermaid
 stateDiagram-v2
-    state "canvas (tools ⑥–⑩ visible)" as canvas
-    state "canvas2 (tools ⑩–⑭ visible)" as canvas2
+    state "canvas (scroll-snap tool strip: ⑥–⑩ left, ⑩–⑭ right)" as canvas
     state "file (File command sheet)" as file
+    state "edit (Edit command sheet)" as editSheet
+    state "editTransform (Edit → Transform sub-list)" as editTransform
+    state "select (Select command sheet)" as selectSheet
+    state "image (Image command sheet)" as imageSheet
     state "layers (Layer stack sheet)" as layers
     state "onelayer (Single-layer tuning sheet)" as onelayer
-    state "editSheet [inferred]" as editSheet
-    state "selectSheet [inferred]" as selectSheet
-    state "imageSheet [inferred]" as imageSheet
-    state "menuSheet [inferred]" as menuSheet
-    state "toolFlyout (Marquee / Lasso group) [inferred]" as toolFlyout
-    state "canvasContextMenu [inferred]" as canvasContextMenu
-    state "modalDialog (New / Export / Size / Fill / Confirm) [inferred]" as modalDialog
+    state "menu (Zoom / Extras / Demo sheet)" as menuSheet
+    state "options (Full ToolOptionsBar + ColorPicker sheet)" as optionsSheet
+    state "toolFlyout (Marquee / Lasso group)" as toolFlyout
+    state "canvasContextMenu (Marquee / Wand / Bucket / Eyedropper / Crop / Transform only)" as canvasContextMenu
+    state "modalDialog (New / Export / Size / Fill / Confirm)" as modalDialog
 
     [*] --> canvas
 
-    %% Tool strip horizontal scrolling (from mobile.md)
-    canvas --> canvas2 : scroll/drag canvas.toolScrollbar (or swipe canvas.toolStrip left)
-    canvas2 --> canvas : scroll/drag canvas.toolScrollbar (or swipe canvas.toolStrip right)
+    %% Tool strip horizontal scrolling (canvas ↔ canvas2 scroll position)
+    canvas --> canvas : swipe canvas.toolStrip or drag canvas.toolScrollbar
 
-    %% File sheet (from mobile.md + inferred dismissals)
+    %% File sheet
     canvas --> file : tap canvas.fileButton
-    canvas2 --> file : tap canvas.fileButton [inferred]
-    file --> canvas : tap outside file.sheet
-    file --> canvas : swipe-down file.sheet [inferred]
-    file --> canvas : tap canvas.fileButton [inferred]
-    file --> canvas : tap file.openItem / file.importItem / file.saveItem / file.saveAsItem / file.closeItem [inferred]
-    file --> modalDialog : tap file.newItem / file.exportItem [inferred]
+    file --> canvas : tap outside / swipe-down / tap canvas.fileButton / Escape
+    file --> canvas : tap file.openItem / file.importItem / file.saveItem / file.saveAsItem / file.closeItem / file.demoItem
+    file --> modalDialog : tap file.newItem / file.exportItem
 
-    %% Layers & OneLayer sheets (from mobile.md + inferred dismissals)
+    %% Edit sheet + Transform sub-list
+    canvas --> editSheet : tap canvas.editButton
+    editSheet --> canvas : tap outside / swipe-down / tap canvas.editButton / Escape / choose action
+    editSheet --> editTransform : tap Transform
+    editTransform --> editSheet : tap edit.backButton / swipe-down / Escape
+    editTransform --> canvas : tap outside / tap canvas.editButton / choose transform action
+    editSheet --> modalDialog : tap Fill…
+
+    %% Select sheet
+    canvas --> selectSheet : tap canvas.selectButton
+    selectSheet --> canvas : tap outside / swipe-down / tap canvas.selectButton / Escape / choose action
+
+    %% Image sheet
+    canvas --> imageSheet : tap canvas.imageButton
+    imageSheet --> canvas : tap outside / swipe-down / tap canvas.imageButton / Escape / choose action
+    imageSheet --> modalDialog : tap Image Size… / Canvas Size…
+
+    %% Layers & OneLayer sheets (one-level-up dismissal)
     canvas --> layers : tap canvas.layersButton
-    canvas2 --> layers : tap canvas.layersButton [inferred]
-    layers --> canvas : tap outside layers.sheet
-    layers --> canvas : swipe-down layers.sheet [inferred]
-    layers --> canvas : tap canvas.layersButton [inferred]
-    layers --> onelayer : tap layers.layerTuning
-    onelayer --> layers : tap outside onelayer.sheet
-    onelayer --> layers : swipe-down onelayer.sheet [inferred]
+    layers --> canvas : tap outside / swipe-down / tap canvas.layersButton / Escape
+    layers --> onelayer : tap layers.layerTuning (⑱)
+    onelayer --> layers : tap outside / swipe-down / Escape
+    onelayer --> canvas : tap canvas.layersButton
 
-    %% Top-bar menus ② Edit, ③ Select, ④ Image [inferred]
-    canvas --> editSheet : tap canvas.editButton [inferred]
-    editSheet --> canvas : tap outside / swipe-down / choose action [inferred]
-    editSheet --> modalDialog : tap Fill… [inferred]
+    %% Bottom-bar Menu ⑰
+    canvas --> menuSheet : tap canvas.menuButton
+    menuSheet --> canvas : tap outside / swipe-down / tap canvas.menuButton / Escape / choose item
 
-    canvas --> selectSheet : tap canvas.selectButton [inferred]
-    selectSheet --> canvas : tap outside / swipe-down / choose action [inferred]
+    %% Contextual strip More options sheet
+    canvas --> optionsSheet : tap canvas.moreOptionsButton or colour swatch
+    optionsSheet --> canvas : tap outside / swipe-down / Escape
 
-    canvas --> imageSheet : tap canvas.imageButton [inferred]
-    imageSheet --> canvas : tap outside / swipe-down / choose action [inferred]
-    imageSheet --> modalDialog : tap Image Size… / Canvas Size… [inferred]
+    %% Grouped tool flyouts ⑥ Marquee, ⑦ Lasso
+    canvas --> toolFlyout : long-press or tap .tool-group-mark on canvas.marqueeTool / canvas.lassoTool
+    toolFlyout --> canvas : tap tool item / tap outside / Escape
 
-    %% Bottom-bar Menu ⑰ [inferred]
-    canvas --> menuSheet : tap canvas.menuButton [inferred]
-    menuSheet --> canvas : tap outside / swipe-down [inferred]
+    %% Viewport long-press context menu (tool-gated)
+    canvas --> canvasContextMenu : long-press canvas.viewport (marquee, wand, bucket, eyedropper, crop, transform only)
+    canvasContextMenu --> canvas : tap item / tap outside / Escape
+    canvasContextMenu --> modalDialog : tap Duplicate Layer… / Delete Layer
 
-    %% Grouped tool flyouts ⑥ Marquee, ⑦ Lasso [inferred]
-    canvas --> toolFlyout : long-press canvas.marqueeTool or canvas.lassoTool [inferred]
-    toolFlyout --> canvas : tap tool item / tap outside [inferred]
-
-    %% Viewport long-press context menu [inferred]
-    canvas --> canvasContextMenu : long-press canvas.viewport [inferred]
-    canvasContextMenu --> canvas : tap item / tap outside [inferred]
-    canvasContextMenu --> modalDialog : tap Duplicate Layer… / Delete Layer [inferred]
-
-    %% Modal dialogs return to canvas [inferred]
-    modalDialog --> canvas : confirm / cancel / Escape [inferred]
+    %% Modal dialogs return to canvas
+    modalDialog --> canvas : confirm / cancel / Escape
 ```
 
 ---
 
-## 3. Open Questions
+## 3. Resolved Design Decisions
 
-The wireframes and `docs/design/mobile.md` leave the following points open. Please confirm
-how each should work before implementation starts:
+All seven open questions from the initial draft have been resolved in
+`docs/design/mobile.md → ### Decisions`, plus two additional requirements:
 
-1. **Tool strip scrolling (`canvas` ↔ `canvas2`) and control IDs:**
-   - Should the bottom tool strip be a single horizontal scroll container (`overflow-x: auto;
-scroll-snap-type: x mandatory`, each button `20%` of the strip width so 5 of the 9 tool
-     groups show at once) with a visible scrollbar/track underneath, rather than two separate
-     screens?
-   - For `data-testid`, should all 9 tool buttons use the `canvas.` prefix (`canvas.eraserTool`,
-     `canvas.paintBucketTool`, `canvas.eyedropperTool`, `canvas.cropTool`), or should `⑪`–`⑭`
-     literally use `canvas2.eraserTool` etc. to match the wireframe filenames?
-
-2. **What button `⑰ Menu` (`canvas.menuButton`, `☰`) opens:**
-   - Neither `mobile.md` nor the wireframes show the contents of `⑰ Menu`. Meanwhile, several
-     v1 features have no dedicated callout on `canvas.jpg`:
-     - Active tool options (`ToolOptionsBar`: brush size/hardness/opacity, wand/bucket
-       tolerance/contiguous/anti-alias/sample-all-layers, selection mode, eyedropper sample
-       source, crop ratio/delete-cropped/✓/✗, Free Transform fields/✓/✗).
-     - Foreground/background `ColorSwatches` and `ColorPicker`.
-     - `ViewMenu` (`Extras`) and zoom actions (`Fit`, `100%`, zoom indicator) / `StatusBar`.
-     - `File → Demo Document`.
-   - Should `⑰ Menu` open a sheet containing **Tool Options + Colours + View/Zoom**, or does
-     `⑰ Menu` serve a different purpose?
-
-3. **Where active Tool Options and Crop / Free Transform `✓` / `✗` buttons appear:**
-   - When Crop or Free Transform is active, or when adjusting Brush size / Wand tolerance,
-     should `ToolOptionsBar` appear inside the `⑰ Menu` sheet, in a compact strip above the
-     bottom tool bar, or when tapping the active tool button a second time?
-
-4. **Top-bar buttons `② Edit`, `③ Select`, `④ Image` presentation:**
-   - Tapping `① File` opens a centered modal list with dividers (`file.jpg`). Should `② Edit`,
-     `③ Select`, and `④ Image` open that same centered sheet style with their existing menu
-     entries (`EditMenu`, `SelectMenu`, `ImageMenu`), or top-anchored dropdowns?
-   - In `Edit`, desktop has a nested `Transform ▸` submenu (`Scale`, `Rotate`, `Skew`,
-     `Distort`, `Perspective`, flips and 90°/180° turns). On mobile, should tapping
-     `Transform` drill into that list within the sheet, or list those items inline?
-
-5. **Layer operations in `layers.jpg` and `onelayer.jpg` vs. v1 scope:**
-   - The v1 scope specifies: _"layer panel (select, visibility, opacity, reorder, rename,
-     add/duplicate/delete)"_. However, `layers.jpg` only draws the eye button and thumbnail per
-     row, and `onelayer.jpg` only draws the eye button, thumbnail, and `Opacity` slider.
-   - How should **select active layer** vs. **open `onelayer`** work in `layers`? (e.g. Does
-     tapping `⑱` both activate the layer and open `onelayer`, or does tapping a row select it
-     and tapping an already-active row's thumbnail—or a tuning icon—open `onelayer`?)
-   - Where should **layer name / rename** and **layer actions** (`New layer`, `Duplicate layer`,
-     `Delete layer`, `Merge down`, plus `LayerMenu`'s `Flatten Image`, `Layer via Copy`,
-     `Layer via Cut`, `Commit Floating Selection`) appear—inside `onelayer` (e.g. editable name
-     at top + action buttons below the opacity slider) and/or as an action bar at the bottom
-     of `layers`?
-
-6. **Sheet layout and dismissal gestures:**
-   - `file.jpg`, `layers.jpg`, and `onelayer.jpg` show the top bar (`①`–`⑤`) and bottom dock
-     (`⑥`–`⑩`, `⑮`–`⑰`) remaining visible while the sheet sits over the center workspace area.
-     Should sheets render inside the center workspace frame (with a translucent backdrop over
-     the canvas where tapping anywhere outside the sheet card—or re-tapping the active top-bar
-     button, or swiping down on the sheet—dismisses it)?
-   - In `onelayer`, `mobile.md` specifies `E -- tap outside --> D` (returning to `layers`, not
-     `canvas`). Should swiping down on `onelayer` also return to `layers`?
-
-7. **`file` sheet labels and `Demo Document`:**
-   - `file.jpg` shows `"New"`, `"Open"`, `"Import image"`, `"Save"`, `"Save as"`, `"Export"`,
-     `"Close"` without ellipses and without `"Demo Document"`. The prompt states _"use the
-     desktop UI's existing icon components, label strings and visual tokens"_. Should `file`
-     use `FileMenu.tsx`'s exact entries (`New…`, `Open…`, `Import Image as Layer…`, `Save`,
-     `Save As…`, `Export…`, `Close`, `Demo Document`), or the 7 entries shown in `file.jpg`?
+1. **Single scroll-snap tool strip with `canvas.` IDs**: One horizontal scroll container with
+   `scroll-snap-type: x mandatory`, showing 5 tools at a time. `canvas2` is a scroll position,
+   and all 9 tool buttons use the `canvas.` prefix (`canvas.marqueeTool` through
+   `canvas.cropTool`).
+2. **Role of `⑰ Menu` (`canvas.menuButton`)**: Houses rare/view actions: Zoom (`Fit to Screen`,
+   `Actual Pixels (100%)`), `Extras` toggle (`ViewOptions.showExtras`), and `Demo Document`.
+3. **Contextual strip + `"More"` sheet**: A compact strip (`canvas.contextStrip`) directly
+   above the tool strip shows the active tool's 1–2 primary controls (Brush/Eraser → size
+   slider + foreground swatch; selection tools → mode; Crop & Free Transform → `✓` `✗` + ratio
+   or angle field; Wand/Bucket → tolerance). A `"More"` button (`canvas.moreOptionsButton`)
+   opens the full `ToolOptionsBar` and `ColorSwatches` / `ColorPicker` in a sheet
+   (`options.sheet`).
+4. **Centred sheets for `Edit`, `Select`, and `Image` with `Transform` drill-down**: Built from
+   the shared desktop section builders. In `Edit`, tapping `Transform` drills into a sub-list
+   with a back button (`edit.backButton`).
+5. **`layers` and `onelayer` responsibilities**:
+   - Tapping a row in `layers` selects the active layer and highlights it.
+   - Tapping the thumbnail `⑱` (`layers.layerTuning`) selects the layer and opens `onelayer`.
+   - `onelayer` contains the editable layer name at the top (tap to rename), eye toggle,
+     thumbnail, opacity slider, and an action row underneath (`Duplicate Layer`,
+     `Delete Layer`, `Merge Down`, `Layer via Copy`, `Layer via Cut`,
+     `Commit Floating Selection`).
+   - `layers` has a bottom action bar with `New Layer` and `Flatten Image`, and supports
+     long-press drag-to-reorder on touch so normal vertical dragging scrolls the list.
+6. **Workspace-scoped sheets and one-level-up dismissal**: Sheets render inside the center
+   workspace over a translucent backdrop. Tap-outside, swipe-down, re-tapping the opening
+   button, and `Escape` all dismiss, stepping one level up (`onelayer` → `layers` → `canvas`,
+   and `Transform` sub-list → `Edit` → `canvas`).
+7. **Desktop labels**: All menu sheets use the desktop strings including ellipses (`New…`,
+   `Open…`, `Import Image as Layer…`, `Save`, `Save As…`, `Export…`, `Close`, `Demo Document`).
+8. **Tool-gated canvas long-press context menu**: Long-pressing on the canvas opens
+   `CanvasMenu` **only** when a Free Transform session is active or the active tool is
+   `rect-marquee`, `ellipse-marquee`, `magic-wand`, `paint-bucket`, `eyedropper`, or `crop`;
+   **never** when the active tool is `brush`, `eraser`, `move`, `lasso`, or `polygon-lasso`.
+9. **Commit 1 desktop before/after screenshots**: Commit 1 must verify zero visual change on
+   the desktop shell, and before/after screenshots must be included in the PR description.
 
 ---
 
@@ -312,30 +321,32 @@ scroll-snap-type: x mandatory`, each button `20%` of the strip width so 5 of the
 
 #### Reused With Changes
 
-| File                                                                                                             | What Changes                                                                                                                                                                                                                                    |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/ui/App.tsx`                                                                                                 | Keeps top-level shortcut hooks, file-drop listener, and `ModalHost`; selects `<DesktopShell>` or `<MobileShell>` via `useShellMode()`.                                                                                                          |
-| `src/ui/panels/ToolPicker.tsx`                                                                                   | Exports `iconFor` / `ICONS` and `ToolButton` (with optional `testId` and optional hidden keyboard shortcut badge on mobile) so the mobile tool strip reuses the exact button, active state, and grouped-tool long-press flyout logic.           |
-| `src/ui/panels/LayerPanel.tsx`                                                                                   | Exports `EyeIcon`, `ActionIcon`, `PANEL_ACTIONS`, and `RenameField` (or shared row primitives) so `layers` and `onelayer` sheets share visibility, opacity merge-key, rename, and drag-reorder logic without duplication.                       |
-| `src/ui/panels/FileMenu.tsx`, `EditMenu.tsx`, `SelectMenu.tsx`, `ImageMenu.tsx`, `LayerMenu.tsx`, `ViewMenu.tsx` | Export their section builders (`fileMenuSections`, `editMenuSections`, etc.) and `onChoose` handlers so both desktop `MenuButton` dropdowns and mobile menu sheets consume the same single source of truth.                                     |
-| `src/ui/viewport/viewport-controller.ts`                                                                         | Integrates `TouchGestureTracker` for 2-finger pinch-zoom around midpoint, 2-finger drag-pan, 2nd-finger cancellation of active 1-finger tool gestures, touch long-press context menu, and suppressing sticky hover cursors after touch release. |
-| `src/ui/panels/MenuList.tsx` & `ContextMenu.tsx`                                                                 | On coarse pointers, tapping a submenu item opens/toggles the submenu cleanly without relying on `pointerenter`, and clamps submenus within narrow viewports.                                                                                    |
-| `src/ui/styles.css`                                                                                              | Extracts all literal colours, spacing, font sizes, border radii, and shadows into `:root` design tokens; adds layout rules for `.mobile-shell`, sheets, and responsive dialog scrolling.                                                        |
+| File                                                                                                             | What Changes                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/ui/App.tsx`                                                                                                 | Keeps top-level shortcut hooks, file-drop listener, and `ModalHost`; selects `<DesktopShell>` or `<MobileShell>` via `useShellMode()`.                                                                                                      |
+| `src/ui/panels/ToolPicker.tsx`                                                                                   | Exports `iconFor` / `ICONS` and `ToolButton` (with optional `testId` and optional hidden keyboard shortcut badge on mobile) so the mobile tool strip reuses the exact button, active state, and grouped-tool long-press flyout logic.       |
+| `src/ui/panels/LayerPanel.tsx`                                                                                   | Exports `EyeIcon`, `ActionIcon`, `PANEL_ACTIONS`, and `RenameField` so `layers` and `onelayer` sheets share visibility, opacity merge-key, rename, and drag-reorder logic without duplication.                                              |
+| `src/ui/panels/FileMenu.tsx`, `EditMenu.tsx`, `SelectMenu.tsx`, `ImageMenu.tsx`, `LayerMenu.tsx`, `ViewMenu.tsx` | Export their section builders (`fileMenuSections`, `editMenuSections`, etc.) and `onChoose` handlers so both desktop `MenuButton` dropdowns and mobile menu sheets consume the same single source of truth.                                 |
+| `src/ui/viewport/viewport-controller.ts`                                                                         | Integrates `TouchGestureTracker` for 2-finger pinch-zoom around midpoint, 2-finger drag-pan, 2nd-finger cancellation of active 1-finger tool gestures, tool-gated touch long-press context menu, and clearing touch hover state on release. |
+| `src/ui/panels/MenuList.tsx` & `ContextMenu.tsx`                                                                 | On coarse pointers, tapping a submenu item opens/toggles the submenu cleanly without relying on `pointerenter`, and clamps submenus within narrow viewports.                                                                                |
+| `src/ui/styles.css`                                                                                              | Extracts all literal colours, spacing, font sizes, border radii, and shadows into `:root` design tokens; adds layout rules for `.mobile-shell`, contextual strip, sheets, and responsive dialog scrolling.                                  |
 
 #### New Files
 
-| File                                                 | Purpose                                                                                                                                                                                                |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/ui/shell/use-shell-mode.ts` (+ `.test.ts`)      | Reactive hook and pure predicate evaluating `width < 768 \|\| coarsePointer`, listening to `resize`, `orientationchange`, and `matchMedia('(pointer: coarse)')`.                                       |
-| `src/ui/shell/desktop/DesktopShell.tsx`              | Extracted desktop layout from `App.tsx` (`Toolbar`, `ToolOptionsBar`, `.workspace` with `Viewport` + `.sidebar` `LayerPanel`, `StatusBar`, `CanvasMenu`) — zero behaviour change.                      |
-| `src/ui/shell/mobile/MobileShell.tsx` (+ `.test.ts`) | Mobile layout (`MobileTopBar`, `Viewport`, `MobileToolStrip`, `MobileBottomBar`, modal sheets for `file`, `layers`, `onelayer`, and menus, plus `CanvasMenu`).                                         |
-| `src/ui/shell/mobile/MobileTopBar.tsx`               | Top bar buttons `①`–`⑤` with stroked 16×16 SVG icons and `aria-label` / `aria-expanded`.                                                                                                               |
-| `src/ui/shell/mobile/MobileToolStrip.tsx`            | 5-visible-at-a-time horizontal scroll strip of `ToolButton`s (`⑥`–`⑭`) and synced scrollbar indicator (`canvas` ↔ `canvas2`).                                                                          |
-| `src/ui/shell/mobile/MobileBottomBar.tsx`            | Bottom bar buttons `⑮ Undo`, `⑯ Redo`, `⑰ Menu`.                                                                                                                                                       |
-| `src/ui/shell/mobile/MobileSheet.tsx`                | Reusable sheet wrapper handling tap-outside dismissal, vertical swipe-down dismissal, and `Escape` key handling.                                                                                       |
-| `src/ui/shell/mobile/MobileLayersSheet.tsx`          | Implements `layers` (`layers.jpg`) and `onelayer` (`onelayer.jpg`) views with shared `LayerThumbnails`.                                                                                                |
-| `src/ui/shell/mobile/MobileIcons.tsx`                | 16×16 stroked SVG icons (`stroke="currentColor"`, `strokeWidth="1.3"`, `strokeLinecap="round"`, `strokeLinejoin="round"`) for `File`, `Edit`, `Select`, `Image`, `Layers`, `Undo`, `Redo`, and `Menu`. |
-| `src/ui/viewport/touch-gestures.ts` (+ `.test.ts`)   | Pure, DOM-free state machine for 1-finger tool input, long-press detection, 2-finger pinch-zoom + pan math, and 2nd-finger tool cancellation.                                                          |
+| File                                                 | Purpose                                                                                                                                                                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/ui/shell/use-shell-mode.ts` (+ `.test.ts`)      | Reactive hook and pure predicate evaluating `width < 768 \|\| coarsePointer`, listening to `resize`, `orientationchange`, and `matchMedia('(pointer: coarse)')`.                                         |
+| `src/ui/shell/desktop/DesktopShell.tsx`              | Extracted desktop layout from `App.tsx` (`Toolbar`, `ToolOptionsBar`, `.workspace` with `Viewport` + `.sidebar` `LayerPanel`, `StatusBar`, `CanvasMenu`) — zero behaviour or visual change.              |
+| `src/ui/shell/mobile/MobileShell.tsx` (+ `.test.ts`) | Mobile layout (`MobileTopBar`, workspace with `Viewport` and active sheet, `MobileContextStrip`, `MobileToolStrip`, `MobileBottomBar`, plus `CanvasMenu`).                                               |
+| `src/ui/shell/mobile/MobileTopBar.tsx`               | Top bar buttons `①`–`⑤` with stroked 16×16 SVG icons and `aria-label` / `aria-expanded`.                                                                                                                 |
+| `src/ui/shell/mobile/MobileContextStrip.tsx`         | Compact contextual strip above the tool strip with primary controls per active tool/session and `"More"` button (`canvas.moreOptionsButton`) opening `options.sheet`.                                    |
+| `src/ui/shell/mobile/MobileToolStrip.tsx`            | 5-visible-at-a-time horizontal scroll-snap strip of `ToolButton`s (`⑥`–`⑭`, all `canvas.*Tool`) and synced scrollbar indicator (`canvas.toolScrollbar`).                                                 |
+| `src/ui/shell/mobile/MobileBottomBar.tsx`            | Bottom bar buttons `⑮ Undo`, `⑯ Redo`, `⑰ Menu`.                                                                                                                                                         |
+| `src/ui/shell/mobile/MobileSheet.tsx`                | Workspace-scoped centered sheet wrapper with translucent backdrop, tap-outside dismissal, vertical swipe-down dismissal, and `Escape` key handling.                                                      |
+| `src/ui/shell/mobile/MobileMenuSheets.tsx`           | `file`, `edit` (with `Transform` drill-down sub-list and back button), `select`, `image`, `menu` (`Fit to Screen`, `100%`, `Extras`, `Demo Document`), and `options` (`ToolOptionsBar` + `ColorPicker`). |
+| `src/ui/shell/mobile/MobileLayersSheet.tsx`          | Implements `layers` (`layers.jpg`) and `onelayer` (`onelayer.jpg`) views with shared `LayerThumbnails`, long-press reorder, rename, and layer actions.                                                   |
+| `src/ui/shell/mobile/MobileIcons.tsx`                | 16×16 stroked SVG icons (`stroke="currentColor"`, `strokeWidth="1.3"`, `strokeLinecap="round"`, `strokeLinejoin="round"`) for `File`, `Edit`, `Select`, `Image`, `Layers`, `Undo`, `Redo`, and `Menu`.   |
+| `src/ui/viewport/touch-gestures.ts` (+ `.test.ts`)   | Pure, DOM-free state machine for 1-finger tool input, tool-gated long-press detection, 2-finger pinch-zoom + pan math, and 2nd-finger tool cancellation.                                                 |
 
 ---
 
@@ -354,8 +365,8 @@ export function selectShellMode(viewportWidth: number, coarsePointer: boolean): 
   `window.matchMedia?.('(pointer: coarse)').matches ?? false`.
 - It subscribes to `window` `'resize'`, `window` `'orientationchange'`, and the `MediaQueryList`
   `'change'` event on `matchMedia('(pointer: coarse)')`.
-- Existing desktop tests run in Vitest / happy-dom where `innerWidth >= 768` (or default 1024)
-  and `(pointer: coarse)` is `false`, so desktop tests render `DesktopShell` with no changes.
+- Existing desktop tests run in Vitest where `innerWidth >= 768` and `(pointer: coarse)` is
+  `false`, so desktop tests render `DesktopShell` with no changes.
 - Because `Editor`, `AppController`, `ToolManager`, `FreeTransform`, `Colors`, `PixelClipboard`,
   and `ViewOptions` live above the shell in `App`, switching shells on resize/rotation preserves
   all document, history, active layer, floating selection, and active tool state.
@@ -368,21 +379,29 @@ export function selectShellMode(viewportWidth: number, coarsePointer: boolean): 
 delegates touch pointers (`e.pointerType === 'touch'`) through `TouchGestureTracker`, while mouse
 and pen pointers keep their existing path (with pen pressure and coalesced samples intact):
 
-1. **First finger down (`1-finger active`)**:
+1. **Tool-gated long-press predicate (`allowsTouchContextMenu`)**:
+   - Long-press context menu on the canvas is enabled **only** when a `ToolSession` (Free
+     Transform) is active, or when `tools.active.id` is one of:
+     `'rect-marquee'`, `'ellipse-marquee'`, `'magic-wand'`, `'paint-bucket'`, `'eyedropper'`,
+     or `'crop'`.
+   - It is **never** enabled when `tools.active.id` is `'brush'`, `'eraser'`, `'move'`,
+     `'lasso'`, or `'polygon-lasso'` (and no session is active).
+2. **First finger down (`1-finger active`)**:
    - Captures `pointerId` on the canvas, records start screen coordinates $(sx_0, sy_0)$, and
-     forwards `pointerDown` to `tools` immediately so tap tools (Magic Wand, Paint Bucket,
-     Eyedropper, Polygon Lasso) and drag tools respond without delay.
-   - Starts a long-press timer (`TOUCH_LONG_PRESS_MS = 500`).
-2. **First finger move (`1-finger active`)**:
+     forwards `pointerDown` to `tools` immediately so tap tools and drag tools respond without
+     delay.
+   - Starts a long-press timer (`TOUCH_LONG_PRESS_MS = 500`) **only if**
+     `allowsTouchContextMenu(tools.active.id, tools.session !== null)` is true.
+3. **First finger move (`1-finger active`)**:
    - If distance from $(sx_0, sy_0)$ exceeds `LONG_PRESS_SLOP_PX = 8` CSS px, cancels the
      long-press timer.
    - Forwards `pointerMove` (with coalesced samples) to `tools`.
-3. **Long-press timer fires (still 1 finger, within 8 CSS px)**:
+4. **Long-press timer fires (still 1 finger, within 8 CSS px, allowed tool/session)**:
    - Calls `cancelToolGesture()` on `ViewportController` (`tools.cancel()`, which rolls back any
-     in-progress stroke, move, marquee, or lasso vertex).
+     in-progress gesture).
    - Transitions tracker to `longPressTriggered` (ignoring subsequent moves/up of that finger).
    - If the document point is on the canvas (`isOnCanvas`), emits `onContextMenu({ x, y })`.
-4. **Second finger lands (`2-finger pinch/pan`)**:
+5. **Second finger lands (`2-finger pinch/pan`)**:
    - Cancels the long-press timer.
    - Immediately calls `cancelToolGesture()` if a 1-finger tool gesture was in progress—so a
      2-finger pinch or pan **never** leaves a stray brush dab, move, or marquee selection.
@@ -390,7 +409,7 @@ and pen pointers keep their existing path (with pen pressure and coalesced sampl
      - Initial finger positions $P_{1,0}, P_{2,0}$, midpoint
        $M_0 = \frac{P_{1,0} + P_{2,0}}{2}$, distance
        $D_0 = \max(1, \|P_{1,0} - P_{2,0}\|)$, and initial `ViewTransform` $V_0$.
-5. **Two-finger move (`2-finger pinch/pan`)**:
+6. **Two-finger move (`2-finger pinch/pan`)**:
    - Recomputes from the baseline $V_0$ each frame (never accumulated frame-to-frame, preventing
      drift):
      - Current midpoint $M = \frac{P_1 + P_2}{2}$ and distance $D = \|P_1 - P_2\|$.
@@ -399,11 +418,11 @@ and pen pointers keep their existing path (with pen pressure and coalesced sampl
        translation $(M.x - M_0.x,\; M.y - M_0.y)$ to `panX` and `panY`.
    - Marks `zooming = true` (settled after `ZOOM_SETTLE_MS`) so marching ants pause during the
      pinch/pan just as they do during wheel zoom and Space-drag.
-6. **Finger lift / cancel from `2-finger pinch/pan` (`cooldown`)**:
+7. **Finger lift / cancel from `2-finger pinch/pan` (`cooldown`)**:
    - When one finger lifts, transitions to `cooldown` until **all** touch pointers are up or
      cancelled, preventing the remaining finger from accidentally starting a 1-finger tool
      stroke.
-7. **No hover residue on touch**:
+8. **No hover residue on touch**:
    - On touch `pointerup` or `pointercancel`, `pointerInside` is cleared and `forgetPointer()`
      is called so neither the brush cursor ring nor pointer coordinates remain stuck on screen.
 
@@ -447,8 +466,9 @@ and referenced by both desktop and mobile shells (preserving current appearance 
 ### 4.5 Context Menu and Dialogs Adaptation on Mobile
 
 - **`CanvasMenu` / `ContextMenu`**:
-  - Opened on mobile by a 1-finger long-press on the document canvas (`canvas.viewport`) or a
-    long-press on a grouped tool button (`⑥`, `⑦`).
+  - Opened on mobile by a 1-finger long-press on the document canvas (`canvas.viewport`) when
+    an allowed tool or Free Transform session is active, or by a long-press on a grouped tool
+    button (`⑥`, `⑦`).
   - Positioned via `clampMenuPosition` (`menu-logic.ts`), keeping at least `4px` margin inside
     `window.innerWidth × window.innerHeight`.
   - Under `.mobile-shell` (or `(pointer: coarse)`), `.menu-item` gets a touch-friendly minimum
@@ -469,42 +489,55 @@ and referenced by both desktop and mobile shells (preserving current appearance 
    - Consolidate literal CSS values into `:root` tokens in `src/ui/styles.css`.
    - Extract `src/ui/shell/desktop/DesktopShell.tsx` and `src/ui/shell/use-shell-mode.ts`
      (with unit tests in `use-shell-mode.test.ts`). All existing desktop tests pass unchanged.
+   - Capture before/after desktop screenshots showing zero visual change (included in the PR
+     description).
 2. **`feat(viewport): touch pinch-zoom, two-finger pan and long-press context menu`**
    - Add `src/ui/viewport/touch-gestures.ts` + `touch-gestures.test.ts` and wire into
      `ViewportController` (1-finger tool routing, 2nd-finger tool cancellation, pinch-zoom
-     around midpoint, 2-finger pan, long-press `onContextMenu`, no touch hover residue).
-3. **`feat(mobile): mobile shell layout, top bar, scrollable tool strip and bottom bar`**
-   - Add `MobileShell.tsx`, `MobileTopBar.tsx`, `MobileToolStrip.tsx`, `MobileBottomBar.tsx`,
-     `MobileSheet.tsx`, `MobileIcons.tsx`, and unit tests covering `canvas` and `canvas2`
-     controls (`①`–`⑰`), tool activation, grouped-tool flyouts (`⑥`, `⑦`), and Undo/Redo (`⑮`,
-     `⑯`).
-4. **`feat(mobile): file, edit, select, image and overflow menu sheets`**
-   - Wire `file` (`file.jpg`) and the remaining menu/options sheets (`②`–`④`, `⑰`), reusing
+     around midpoint, 2-finger pan, tool-gated long-press `onContextMenu` for marquee/wand/
+     bucket/eyedropper/crop/transform only, no touch hover residue).
+3. **`feat(mobile): mobile shell layout, top bar, contextual strip, tool strip and bottom bar`**
+   - Add `MobileShell.tsx`, `MobileTopBar.tsx`, `MobileContextStrip.tsx`,
+     `MobileToolStrip.tsx`, `MobileBottomBar.tsx`, `MobileSheet.tsx`, `MobileIcons.tsx`, and
+     unit tests covering `canvas` and `canvas2` controls (`①`–`⑰`, all `canvas.*` IDs),
+     contextual strip primary controls + `"More"` sheet, tool activation, grouped-tool flyouts
+     (`⑥`, `⑦`), and Undo/Redo (`⑮`, `⑯`).
+4. **`feat(mobile): file, edit, select, image and menu sheets`**
+   - Add `MobileMenuSheets.tsx` wiring `file` (`file.jpg`, desktop labels + `Demo Document`),
+     `edit` (with `Transform` drill-down sub-list and `Back` button), `select`, `image`, and
+     `menu` (`⑰`: `Fit to Screen`, `Actual Pixels (100%)`, `Extras`, `Demo Document`), reusing
      menu section definitions and synchronous `FileStore` user-activation handlers, with unit
      tests for every sheet transition and dismissal path.
 5. **`feat(mobile): layers and single-layer tuning sheets`**
-   - Add `MobileLayersSheet.tsx` implementing `layers` (`layers.jpg`) and `onelayer`
-     (`onelayer.jpg`, callout `⑱`), sharing `LayerThumbnails`, visibility toggle, opacity
-     slider with gesture merge keys, reorder, rename, and layer actions, with unit tests.
-6. **`docs: document mobile shell architecture and touch controls`**
+   - Add `MobileLayersSheet.tsx` implementing `layers` (`layers.jpg`: tap row to select, tap
+     thumbnail `⑱` for `onelayer`, bottom bar with `New Layer` and `Flatten Image`, long-press
+     drag reorder) and `onelayer` (`onelayer.jpg`: editable name at top, eye, thumbnail,
+     opacity slider, and `Duplicate`, `Delete`, `Merge Down`, `Layer via Copy`,
+     `Layer via Cut`, `Commit Floating`), with unit tests.
+6. **`docs: document mobile shell architecture, touch controls and PR summary`**
    - Update `CLAUDE.md` (keeping it under 200 lines) and `docs/tools.md` / `docs/layers.md`
-     with mobile shell and touch viewport details.
+     with mobile shell and touch viewport details, and write `docs/PR/feat-mobile-shell.md`
+     with the before/after desktop screenshots.
 
 ---
 
 ### 5.2 Manual Test Checklist (Real Phone via Cloudflare Preview)
 
-#### Screen: `canvas` & `canvas2` (Bars, Tool Strip & Viewport Gestures)
+#### Screen: `canvas` & `canvas2` (Bars, Context Strip, Tool Strip & Viewport Gestures)
 
 - [ ] Load the preview URL on a phone in portrait mode: the mobile shell renders (`①`–`⑤` at
-      top, `⑥`–`⑩` + scrollbar + `⑮`–`⑰` at bottom, canvas filling the middle).
+      top, contextual strip + `⑥`–`⑩` + scrollbar + `⑮`–`⑰` at bottom, canvas filling the
+      middle).
 - [ ] Rotate the phone to landscape and back (and resize a desktop browser across `768px`):
       layout adapts cleanly without losing document state or active tool.
 - [ ] Scroll/drag the horizontal tool strip (`canvas.toolStrip` / `canvas.toolScrollbar`) from
-      `canvas` (`⑥`–`⑩`) to `canvas2` (`⑩`–`⑭`) and back.
+      `canvas` (`⑥`–`⑩`) to `canvas2` (`⑩`–`⑭`) and back; scroll-snap settles with 5 tools in
+      view.
 - [ ] Tap each tool (`⑥` Marquee, `⑦` Lasso, `⑧` Magic Wand, `⑨` Move, `⑩` Brush, `⑪` Eraser,
-      `⑫` Paint Bucket, `⑬` Eyedropper, `⑭` Crop) and verify the pressed highlight updates and
-      1-finger gestures on the canvas drive that tool.
+      `⑫` Paint Bucket, `⑬` Eyedropper, `⑭` Crop): verify the contextual strip updates its
+      primary controls (size + swatch for Brush/Eraser, mode for Marquee/Lasso, tolerance for
+      Wand/Bucket, `✓`/`✗` + ratio for Crop) and `"More"` opens the full options + colour
+      picker sheet.
 - [ ] Long-press `⑥` (`canvas.marqueeTool`) and `⑦` (`canvas.lassoTool`): the group flyout
       opens; select `Elliptical Marquee` / `Polygonal Lasso` and verify the button icon updates
       to the last-used tool.
@@ -515,44 +548,56 @@ and referenced by both desktop and mobile shells (preserving current appearance 
       accidental 1-finger stroke is drawn during release.
 - [ ] Tap `⑮ Undo` and `⑯ Redo` after painting: history steps undo and redo, and buttons
       disable when the stack is empty.
-- [ ] Long-press with 1 finger stationary on the document canvas: `CanvasMenu` opens at the
-      finger, clamped inside the screen; tapping outside closes it without painting.
+- [ ] Long-press with 1 finger stationary on the document canvas: - With Marquee, Magic Wand, Paint Bucket, Eyedropper, Crop, or Free Transform active:
+      `CanvasMenu` opens at the finger, clamped inside the screen. - With Brush, Eraser, Move, Lasso, or Polygonal Lasso active: `CanvasMenu` does **not**
+      open on long-press.
 
 #### Screen: `file` (`① File`)
 
-- [ ] Tap `①` (`canvas.fileButton`): the `file` sheet opens showing `New`, `Open`,
-      `Import image`, `Save`, `Save as`, `Export`, `Close`.
-- [ ] Tap outside the `file` sheet (and test swipe-down): the sheet dismisses back to `canvas`.
-- [ ] Tap `New`: `NewDocumentDialog` opens cleanly within the mobile viewport; create a
+- [ ] Tap `①` (`canvas.fileButton`): the `file` sheet opens inside the workspace with a
+      translucent backdrop, showing `New…`, `Open…`, `Import Image as Layer…`, `Save`,
+      `Save As…`, `Export…`, `Close`, and `Demo Document`.
+- [ ] Tap outside `file.sheet`, swipe down, and re-tap `①`: each dismisses the sheet back to
+      `canvas`.
+- [ ] Tap `New…`: `NewDocumentDialog` opens cleanly within the mobile viewport; create a
       document and verify it fits to the viewport.
-- [ ] Tap `Open` and `Import image`: the native mobile file/photo picker opens (user activation
-      preserved) and loads the chosen file/image.
-- [ ] Tap `Save` / `Save as` and `Export`: `.soup` and PNG/JPEG/WebP downloads/pickers complete
-      without error.
+- [ ] Tap `Open…` and `Import Image as Layer…`: the native mobile file/photo picker opens (user
+      activation preserved) and loads the chosen file/image.
+- [ ] Tap `Save` / `Save As…` and `Export…`: `.soup` and PNG/JPEG/WebP downloads/pickers
+      complete without error.
 
 #### Menus & Tool Options (`② Edit`, `③ Select`, `④ Image`, `⑰ Menu`)
 
 - [ ] Draw a marquee selection, tap `③ Select` → `Inverse` and `Deselect`, and verify marching
       ants update.
 - [ ] Tap `② Edit` → `Fill…` (test `FillDialog` on mobile) and `Clear`.
-- [ ] Tap `② Edit` → `Free Transform`: drag corners/edges by touch, test Distort/Perspective
-      modes via context menu or `Edit → Transform`, and apply (`✓`) or cancel (`✗`).
+- [ ] Tap `② Edit` → `Transform`: drills into the Transform sub-list with a `Back` button; tap
+      `Back` to return to `Edit`, then choose a transform mode.
+- [ ] In Free Transform: drag corners/edges by touch, adjust the angle field or tap `✓` / `✗`
+      directly in the contextual strip.
 - [ ] Tap `④ Image` → `Rotate 90° Clockwise`, `Image Size…`, and `Canvas Size…`.
-- [ ] Open `⑰ Menu`: adjust active tool options (e.g. Brush size/opacity) and foreground
-      colour (`ColorPicker` touch drag on SV square and hue strip).
+- [ ] Tap `⑰ Menu`: test `Fit to Screen`, `Actual Pixels (100%)`, `Extras` toggle, and
+      `Demo Document`.
 
 #### Screen: `layers` (`⑤ Layer`) & `onelayer` (`⑱ LayerTuning`)
 
 - [ ] With a multi-layer document, tap `⑤` (`canvas.layersButton`): the `layers` sheet opens
-      with top layer first, showing each layer's eye icon and live thumbnail (`⑱`).
-- [ ] Tap a layer's eye icon (`layers.visibilityButton`): the eye toggles between open and
-      crossed-out, and the canvas composite updates live behind the sheet.
-- [ ] Drag a layer row vertically in `layers`: the drop indicator shows and dropping reorders
-      the layer stack in one undo step.
-- [ ] Tap `⑱` (`layers.layerTuning`) on a layer: transitions to `onelayer` showing that layer's
-      eye icon, thumbnail, and `Opacity` slider (`0%`–`100%`).
+      with top layer first, showing each layer's eye icon, name, and live thumbnail (`⑱`), plus
+      the bottom bar with `New Layer` and `Flatten Image`.
+- [ ] Tap a layer row (`layers.row`): that layer becomes active (`aria-current="true"`).
+- [ ] Tap a layer's eye icon (`layers.visibilityButton`): toggles visibility and updates the
+      canvas live behind the sheet.
+- [ ] Long-press and drag a layer row vertically in `layers`: the drop indicator shows and
+      dropping reorders the layer stack in one undo step; a plain vertical drag scrolls the
+      sheet.
+- [ ] Tap `⑱` (`layers.layerTuning`) on a layer: selects the layer and transitions to
+      `onelayer` showing its editable name at top, eye icon, thumbnail, `Opacity` slider
+      (`0%`–`100%`), and action buttons (`Duplicate`, `Delete`, `Merge Down`,
+      `Layer via Copy`, `Layer via Cut`, `Commit Floating`).
+- [ ] Tap `onelayer.nameButton`: rename the layer and confirm.
 - [ ] Drag `onelayer.opacitySlider` to `80%`: the readout updates to `80%`, the canvas updates
       live, and releasing records a single undo step.
-- [ ] Test adding, duplicating, renaming, merging down, and deleting a layer by touch.
-- [ ] Tap outside `onelayer.sheet`: returns to `layers` (`layers.sheet`).
-- [ ] Tap outside `layers.sheet`: returns to `canvas`.
+- [ ] Test `Duplicate`, `Delete`, `Merge Down`, `Layer via Copy/Cut`, and `Commit Floating` in
+      `onelayer`, and `New Layer` / `Flatten Image` in `layers`.
+- [ ] Tap outside or swipe down on `onelayer.sheet`: returns one level up to `layers.sheet`.
+- [ ] Tap outside, swipe down, or re-tap `⑤` on `layers.sheet`: returns to `canvas`.
