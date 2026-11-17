@@ -33,14 +33,14 @@ The repository's Pages source is **GitHub Actions**. The **Deploy to GitHub Page
 Actions tab:
 
 - **build** sets up Node from `.nvmrc` with npm's cache, runs `npm ci`, then `npm run build`
-  with `VITE_BASE=/Pixelsoup/`, and uploads `dist/` as the Pages artifact.
+  with `VITE_BASE=/pixelsoup/`, and uploads `dist/` as the Pages artifact.
 - **deploy** publishes the artifact to the `github-pages` environment, which accepts only `main`.
 - Runs share the `pages` concurrency group, so a new push cancels a run still in progress and
   only the latest `main` is published.
 
-GitHub serves a project site under the repository's name: here https://haohengt.com/Pixelsoup/,
-on the owner's custom domain (`haoheng-tang.github.io/Pixelsoup/` redirects there). So the
-workflow sets Vite's `base` to `/Pixelsoup/` through `VITE_BASE`, while `npm run dev`,
+GitHub serves a project site under the repository's name: here https://haohengt.com/pixelsoup/,
+on the owner's custom domain (`haoheng-tang.github.io/pixelsoup/` redirects there). So the
+workflow sets Vite's `base` to `/pixelsoup/` through `VITE_BASE`, while `npm run dev`,
 `npm run preview` and Cloudflare keep the default `/`. **The base path is the one setting that
 changes if the repository is renamed**: set `VITE_BASE` in the workflow to the new name. (It
 would become `/` if the site got a custom domain of its own.)
