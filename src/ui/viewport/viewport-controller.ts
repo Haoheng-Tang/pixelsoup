@@ -20,6 +20,8 @@ import type { DocumentPlacement } from './ants';
 import { ANT_PHASES, ANT_STEP_MS, ZOOM_SETTLE_MS } from './ants';
 import { createCheckerPattern } from './checkerboard';
 import { SelectionOverlay } from './selection-overlay';
+import type { TouchPointInput } from './touch-gestures';
+import { TouchGestureController } from './touch-gestures';
 import type { ViewOptions } from './view-options';
 import type { ViewTransform } from './view-transform';
 import { centered, fitZoom, nextZoomStep, screenToDocument, zoomAt } from './view-transform';
@@ -68,6 +70,10 @@ interface PanDrag {
 interface ClientPoint {
   readonly clientX: number;
   readonly clientY: number;
+}
+
+interface TouchEventEntry extends TouchPointInput {
+  readonly event: PointerEvent;
 }
 
 function modifiersOf(e: KeyboardEvent | MouseEvent): ToolModifiers {
@@ -167,6 +173,8 @@ export class ViewportController {
   /** Last pointer position over the canvas (or captured by a gesture). */
   private pointer: ClientPoint | null = null;
   private modifiers: ToolModifiers = NO_MODIFIERS;
+  private lastPointerWasTouch = false;
+  private readonly touch: TouchGestureController<TouchEventEntry>;
 
   constructor(
     private readonly container: HTMLElement,
@@ -177,6 +185,7 @@ export class ViewportController {
   ) {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'viewport-canvas';
+    this.canvas.style.touchAction = 'none';
     this.canvas.tabIndex = 0;
     this.canvas.setAttribute('aria-label', 'Document canvas');
     const context = this.canvas.getContext('2d', { alpha: false });
@@ -184,6 +193,55 @@ export class ViewportController {
     this.context = context;
     container.appendChild(this.canvas);
     this.overlay = new SelectionOverlay(container);
+
+    this.touch = new TouchGestureController<TouchEventEntry>({
+      getView: () => this.view,
+      setView: (view) => this.setView(view),
+      getToolContext: () => ({
+        toolId: this.tools.activeTool.id,
+        hasSession: this.tools.session !== null,
+      }),
+      isOnDocument: (entry) => {
+        const [x, y] = this.documentPoint(entry.event);
+        return isOnCanvas(this.editor.document, x, y);
+      },
+      startTool: (entry) => {
+        this.toolPointerId = entry.pointerId;
+        this.trackPointer(entry.event);
+        this.tools.pointerDown(this.toolEvent(entry.event, entry.event));
+      },
+      moveTool: (entry) => {
+        this.trackPointer(entry.event);
+        this.tools.pointerMove(this.toolEvent(entry.event, entry.event));
+      },
+      endTool: (entry) => {
+        this.toolPointerId = null;
+        this.trackPointer(entry.event);
+        this.tools.pointerUp(this.toolEvent(entry.event, entry.event));
+        this.updateCursor();
+        this.forgetPointer();
+      },
+      cancelTool: () => {
+        this.toolPointerId = null;
+        this.tools.cancel();
+        this.updateCursor();
+        this.forgetPointer();
+      },
+      openContextMenu: (at) => {
+        if (this.gate.blocked) return;
+        for (const listener of [...this.contextMenuListeners]) listener(at);
+      },
+      onPinchStateChange: (pinching) => {
+        window.clearTimeout(this.zoomTimer);
+        if (pinching) {
+          this.zooming = true;
+          this.invalidateOverlay();
+        } else {
+          this.zoomTimer = window.setTimeout(this.settleZoom, ZOOM_SETTLE_MS);
+          this.invalidateOverlay();
+        }
+      },
+    });
 
     const doc = editor.document;
     this.renderer = new CpuCompositeRenderer(doc.width, doc.height);
@@ -410,7 +468,7 @@ export class ViewportController {
 
   /** The ants stand still while the view is being panned or wheel-zoomed. */
   private viewChanging(): boolean {
-    return this.drag !== null || this.zooming;
+    return this.drag !== null || this.zooming || this.touch.isPinching;
   }
 
   /** Moves the ants on a step in `ANT_STEP_MS`, while there are any and the view is still. */
@@ -561,7 +619,17 @@ export class ViewportController {
   };
 
   private readonly handlePointerDown = (e: PointerEvent): void => {
-    if (this.drag || this.toolPointerId !== null) return;
+    if (e.pointerType === 'touch') {
+      if (this.drag || (this.toolPointerId !== null && !this.touch.isActive)) return;
+      this.lastPointerWasTouch = true;
+      e.preventDefault();
+      this.canvas.focus({ preventScroll: true });
+      this.canvas.setPointerCapture(e.pointerId);
+      this.touch.pointerDown(this.touchEntry(e));
+      return;
+    }
+    this.lastPointerWasTouch = false;
+    if (this.drag || this.toolPointerId !== null || this.touch.isActive) return;
     // A context click never reaches the tool: it opens the canvas's menu (contextmenu).
     const button = isContextClick(e, IS_APPLE) ? 2 : e.button;
     const isPan = button === 1 || (button === 0 && this.spaceHeld);
@@ -586,6 +654,12 @@ export class ViewportController {
   };
 
   private readonly handlePointerMove = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      if (!this.touch.isActive) return;
+      this.touch.pointerMove(this.touchEntry(e));
+      return;
+    }
+    this.lastPointerWasTouch = false;
     const drag = this.drag;
     if (drag) {
       if (e.pointerId !== drag.pointerId) return;
@@ -604,6 +678,11 @@ export class ViewportController {
   };
 
   private readonly handlePointerUp = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      this.releasePointer(e.pointerId);
+      this.touch.pointerUp(this.touchEntry(e));
+      return;
+    }
     if (this.drag) {
       if (e.pointerId !== this.drag.pointerId) return;
       this.drag = null;
@@ -622,6 +701,11 @@ export class ViewportController {
   };
 
   private readonly handlePointerCancel = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') {
+      this.releasePointer(e.pointerId);
+      this.touch.pointerCancel(e.pointerId);
+      return;
+    }
     if (this.drag?.pointerId === e.pointerId) {
       this.drag = null;
       this.updateCursor();
@@ -631,31 +715,44 @@ export class ViewportController {
     }
   };
 
-  private readonly handlePointerEnter = (): void => {
+  private readonly handlePointerEnter = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
     this.pointerInside = true;
     this.invalidateOverlay();
   };
 
   /** Follows the two clicks it ends; ignored while panning or mid-gesture. */
   private readonly handleDoubleClick = (e: MouseEvent): void => {
-    if (e.button !== 0 || this.drag || this.spaceHeld || this.toolPointerId !== null) return;
+    if (
+      e.button !== 0 ||
+      this.drag ||
+      this.spaceHeld ||
+      this.toolPointerId !== null ||
+      this.touch.isActive
+    ) {
+      return;
+    }
     this.modifiers = modifiersOf(e);
     this.tools.doubleClick(this.toolEvent(e));
   };
 
   /**
    * Never lets the browser's menu show; asks for the canvas's own over the document,
-   * unless a gesture or pan is in progress or a dialog is open.
+   * unless a gesture or pan is in progress or a dialog is open. Touch long-presses are
+   * handled by `TouchGestureController` so tool-specific gating applies.
    */
   private readonly handleContextMenu = (e: MouseEvent): void => {
     e.preventDefault();
+    const pointerType = (e as PointerEvent).pointerType;
+    if (pointerType === 'touch' || this.lastPointerWasTouch || this.touch.isActive) return;
     if (this.gate.blocked || this.drag || this.spaceHeld || this.toolPointerId !== null) return;
     const [x, y] = this.documentPoint(e);
     if (!isOnCanvas(this.editor.document, x, y)) return;
     for (const listener of [...this.contextMenuListeners]) listener({ x: e.clientX, y: e.clientY });
   };
 
-  private readonly handlePointerLeave = (): void => {
+  private readonly handlePointerLeave = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
     this.pointerInside = false;
     this.invalidateOverlay();
     if (!this.drag && this.toolPointerId === null) this.forgetPointer();
@@ -663,6 +760,10 @@ export class ViewportController {
 
   /** Abandons the tool's pointer gesture, if any, without committing it. */
   private cancelToolGesture(): void {
+    if (this.touch.isActive) {
+      this.touch.cancelAll();
+      return;
+    }
     if (this.toolPointerId === null) return;
     this.releasePointer(this.toolPointerId);
     this.toolPointerId = null;
@@ -816,6 +917,18 @@ export class ViewportController {
   private localPoint(e: MouseEvent): [number, number] {
     const bounds = this.canvas.getBoundingClientRect();
     return [e.clientX - bounds.left, e.clientY - bounds.top];
+  }
+
+  private touchEntry(e: PointerEvent): TouchEventEntry {
+    const [localX, localY] = this.localPoint(e);
+    return {
+      pointerId: e.pointerId,
+      clientX: e.clientX,
+      clientY: e.clientY,
+      localX,
+      localY,
+      event: e,
+    };
   }
 
   private listen<K extends keyof HTMLElementEventMap>(

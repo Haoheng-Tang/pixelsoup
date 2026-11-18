@@ -117,8 +117,8 @@ src/
     color/, clipboard/   Colors, HSV picker, colour math; PixelClipboard and system clipboard
     tools/               ToolManager; marquee, lasso, wand, move, brush, bucket, eyedropper, crop
     transform/           Free Transform: its session, handle math, options and options bar
-    viewport/, render/   ViewportController, ants, readouts; CompositeRenderer (GPU seam), meshes
-    panels/              Toolbar, menus and ContextMenu, ToolPicker, ToolOptionsBar, LayerPanel
+    viewport/, render/   ViewportController, touch gestures, ants; CompositeRenderer, meshes
+    shell/, panels/      DesktopShell, MobileShell; Toolbar, menus, ToolPicker, LayerPanel
 ```
 
 ## Coding conventions

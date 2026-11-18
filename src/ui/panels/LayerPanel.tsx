@@ -297,18 +297,19 @@ function LayerRow({
   );
 }
 
-interface RenameFieldProps {
+export interface RenameFieldProps {
   editor: Editor;
   layer: Layer;
   /** Called once when editing ends; `refocus` asks for focus back on the layer name. */
   onDone: (refocus: boolean) => void;
+  testId?: string;
 }
 
 /**
  * Inline name editor: Enter commits, Escape cancels, an empty name is refused. Leaving the
  * field keeps a valid name and drops an empty one.
  */
-function RenameField({ editor, layer, onDone }: RenameFieldProps) {
+export function RenameField({ editor, layer, onDone, testId }: RenameFieldProps) {
   const [value, setValue] = useState(layer.name);
   const [invalid, setInvalid] = useState(false);
   const done = useRef(false);
@@ -330,6 +331,7 @@ function RenameField({ editor, layer, onDone }: RenameFieldProps) {
     <input
       className="layer-name-input"
       data-row-control
+      data-testid={testId}
       aria-label={`Name of layer ${layer.name}`}
       aria-invalid={invalid || undefined}
       title={invalid ? 'A layer needs a name' : undefined}
@@ -451,7 +453,7 @@ function capturePointer(element: Element, pointerId: number): void {
   }
 }
 
-function EyeIcon({ open }: { open: boolean }) {
+export function EyeIcon({ open }: { open: boolean }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
       <path

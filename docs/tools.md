@@ -136,6 +136,17 @@ tools). A click tool (the Magic Wand, the Paint Bucket) makes one step per click
   double-clicks (`ToolPointerEvent.button`), and the viewport turns a right press, or a
   Control-click on a Mac, into the context menu instead, so it never starts a gesture, adds
   a vertex or counts as a click.
+- **Touch and mobile shell** (`TouchGestureController` in `src/ui/viewport/touch-gestures.ts`,
+  `MobileShell` in `src/ui/shell/mobile`): when the viewport is narrower than 768 px or the
+  primary pointer is coarse (`useShellMode`), `App` renders `MobileShell` (top bar with
+  Layers and Undo/Redo, full-screen canvas, compact contextual strip, 5-per-page horizontal
+  tool strip, bottom menu bar and modal sheets). On touch, one finger drives the active tool
+  (click-immediate tools such as the Magic Wand and Paint Bucket commit on lift so a pinch or
+  long-press never fires them), a second finger cancels any single-finger tool gesture and
+  switches to two-finger pinch-zoom and pan about the fingers' midpoint, and a 500 ms
+  single-finger long-press on the document opens the context menu only for the marquees,
+  Magic Wand, Paint Bucket, Eyedropper, Crop and Free Transform (never for Brush, Eraser,
+  Move or the lassos).
 
 ## Context menu
 

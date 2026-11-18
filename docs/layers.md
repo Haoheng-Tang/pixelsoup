@@ -168,6 +168,13 @@ its source, the selection and position as lifted, and a `PixelSnapshot` of the p
   disabled when they would do nothing, or while a dialog or file operation is running.
 - `canRunLayerAction` and `runLayerAction` (`src/ui/layer-actions.ts`) back the buttons, the
   Layer menu and the shortcuts, so all three enable and behave alike.
+- **On mobile** (`MobileLayersSheet` in `src/ui/shell/mobile/MobileLayersSheet.tsx`), tapping
+  the top bar's Layers button opens the `Layers` sheet: tapping a row selects that layer,
+  holding a row for 350 ms arms drag-to-reorder while an immediate vertical drag scrolls the
+  list, the footer has New layer and Flatten Image, and tapping a row's thumbnail opens the
+  single-layer `Layer` sheet (`onelayer`) with inline rename, visibility, opacity slider and
+  the layer actions (Duplicate, Delete, Merge Down, Layer via Copy/Cut, Commit Floating
+  Selection). Dismissing `onelayer` returns one level up to `Layers`.
 
 ### Thumbnails
 
